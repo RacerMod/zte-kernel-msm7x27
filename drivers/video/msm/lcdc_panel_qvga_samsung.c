@@ -303,7 +303,7 @@ static struct platform_device this_device = {
 	}
 };
 
-static int __init lcdc_panel_probe(struct platform_device *pdev)
+static int __devinit lcdc_panel_probe(struct platform_device *pdev)
 {
 	struct msm_panel_info *pinfo;
 	uint32 gpio_ic6[6];
