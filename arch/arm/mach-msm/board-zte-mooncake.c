@@ -2654,22 +2654,8 @@ static void __init msm_fb_add_devices(void)
 
 
 static struct i2c_board_info aux_i2c_devices[] = {
-#if 0
-	{
-		.type         = "avago_ofn",
-		/*.flags        = ,*/
-		.addr         = 0x33,
-		.platform_data = &avago_ofn,
-		.irq          = MSM_GPIO_TO_INT(35),
-	},
-#endif
 	{
 		I2C_BOARD_INFO("si4708", 0x10),
-	},
-	
-	{
-		.type         = "taos",
-		.addr         = 0x39,
 	},
 	//ZTE_ALSPRX_001 end
 };
@@ -3078,15 +3064,6 @@ static struct msm_i2c_platform_data msm_i2c_pdata = {
 	.pri_clk = 60,
 	.pri_dat = 61,
 
-    /*
-      * Commented by jia.jia, zh.shj
-      * Disable second msm-i2c interface (merged from v4735)
-      */
-#if 0
-	.aux_clk = 95,
-	.aux_dat = 96,
-#endif
-
 	.msm_i2c_config_gpio = msm_i2c_gpio_config,
 };
 
@@ -3096,17 +3073,6 @@ static void __init msm_device_i2c_init(void)
 		pr_err("failed to request gpio i2c_pri_clk\n");
 	if (gpio_request(61, "i2c_pri_dat"))
 		pr_err("failed to request gpio i2c_pri_dat\n");
-
-    /*
-      * Commented by jia.jia, zh.shj
-      * Disable second msm-i2c interface (merged from v4735)
-      */
-#if 0
-	if (gpio_request(95, "i2c_sec_clk"))
-		pr_err("failed to request gpio i2c_sec_clk\n");
-	if (gpio_request(96, "i2c_sec_dat"))
-		pr_err("failed to request gpio i2c_sec_dat\n");
-#endif
 
 	if (cpu_is_msm7x27())
 		msm_i2c_pdata.pm_lat =
@@ -3371,21 +3337,13 @@ static void __init msm7x2x_init(void)
 		msm_otg_pdata.phy_reset_sig_inverted = 1;
 	}
 
-#ifdef CONFIG_USB_GADGET
-//	msm_gadget_pdata.swfi_latency =
-//		msm7x27_pm_data
-//		[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].latency;
-//	msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
-#endif
 #endif
 /*ZTE_VIB_SLF_001  2010-03-02,BEGIN*/ 
 	msm_init_pmic_vibrator(); 
 /*ZTE_VIB_SLF_001  2010-03-02 END*/ 
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
-#ifdef CONFIG_MSM_CAMERA
-//	config_camera_off_gpios(); /* might not be necessary */
-#endif
+
 	msm_device_i2c_init();
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 /*ZTE_AUX_FYA_001,@2010-02-06,BEGIN*/
@@ -3558,19 +3516,6 @@ static void __init msm7x2x_map_io(void)
 	msm_map_common_io();
 	msm_msm7x2x_allocate_memory_regions();
 
-
-#if 0
-#ifdef CONFIG_CACHE_L2X0
-	if (machine_is_msm7x27_surf() || machine_is_msm7x27_ffa() || machine_is_blade()) {
-		/* 7x27 has 256KB L2 cache:
-			64Kb/Way and 4-Way Associativity;
-			R/W latency: 3 cycles;
-			evmon/parity/share disabled. */
-		l2x0_init(MSM_L2CC_BASE, 0x00068012, 0xfe000000);
-	}
-	
-#endif
-#endif
 #ifdef CONFIG_CACHE_L2X0
 	l2x0_init(MSM_L2CC_BASE, 0x00068012, 0xfe000000);
 #endif
