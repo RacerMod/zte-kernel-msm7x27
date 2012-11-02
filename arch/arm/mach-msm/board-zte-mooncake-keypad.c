@@ -30,7 +30,7 @@ when             who             what, where, why                               
 
 static unsigned int keypad_row_gpios[] = {31, 28}; 
 
-static unsigned int keypad_col_gpios[] = {37, 41, 40}; 
+static unsigned int keypad_col_gpios[] = {37, 41, 40, 36}; 
 
 #define KEYMAP_INDEX(row, col) ((row)*ARRAY_SIZE(keypad_col_gpios) + (col))
 
