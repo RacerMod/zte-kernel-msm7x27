@@ -28,7 +28,7 @@ when             who             what, where, why                               
 #include <asm/mach-types.h>
 
 
-static unsigned int keypad_row_gpios[] = {33, 28}; 
+static unsigned int keypad_row_gpios[] = {31, 28}; 
 
 static unsigned int keypad_col_gpios[] = {37, 41, 40}; 
 
@@ -37,13 +37,15 @@ static unsigned int keypad_col_gpios[] = {37, 41, 40};
 
 static const unsigned short keypad_keymap_mooncake[ARRAY_SIZE(keypad_col_gpios) *
 					      ARRAY_SIZE(keypad_row_gpios)] = {
-	/*                       row, col   */
-	[KEYMAP_INDEX(0, 0)] = KEY_BACK, 
-	[KEYMAP_INDEX(0, 1)] = 0, 
-	[KEYMAP_INDEX(0, 2)] = KEY_MENU,
+	/*          row, col          */
+	[KEYMAP_INDEX(0, 0)] = KEY_HOME,
+	[KEYMAP_INDEX(0, 1)] = KEY_BACK,
+	[KEYMAP_INDEX(0, 2)] = KEY_END,
+	[KEYMAP_INDEX(0, 3)] = KEY_SEND,
 	[KEYMAP_INDEX(1, 0)] = KEY_VOLUMEUP,
 	[KEYMAP_INDEX(1, 1)] = KEY_VOLUMEDOWN,
-	[KEYMAP_INDEX(1, 2)] = KEY_HOME,
+	[KEYMAP_INDEX(1, 2)] = KEY_F1,		//menu
+	[KEYMAP_INDEX(1, 3)] = KEY_HOME,	//home
 };
 
 
