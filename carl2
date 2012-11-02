@@ -10,5 +10,5 @@ cd ~/android/nightlies/cm7/carl
 echo "Copying zImage..."
 cp ~/android/cm7/kernel/zte/msm7x27/arch/arm/boot/zImage zImage
 echo "Creating gen2_boot.img..."
-mkbootimg --base 0x02600000 --kernel zImage --ramdisk ../ramdisk.gz -o gen2_boot.img
+mkbootimg --base 0x02600000 --kernel zImage --ramdisk ramdisk.gz -o gen2_boot.img
 echo "Done! gen2_boot.img is ready"
