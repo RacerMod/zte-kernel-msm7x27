@@ -1,3 +1,0 @@
-#!/bin/bash
-export ARCH=arm
-export CROSS_COMPILE="ccache $CCOMPILER7"
