@@ -6,7 +6,7 @@ echo "Loading Racer gen2 defconfig..."
 make cyanogen_mooncake_defconfig
 echo "Compiling kernel..."
 make -j4
-cd ~/android/nightlies/cm7/racer/gen2
+cd ~/android/nightlies/cm7/racer
 echo "Copying zImage..."
 cp ~/android/cm7/kernel/zte/msm7x27/arch/arm/boot/zImage zImage
 echo "Creating gen2_boot.img..."
