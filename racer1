@@ -10,5 +10,5 @@ cd ~/android/nightlies/cm7/racer
 echo "Copying zImage..."
 cp ~/android/cm7/kernel/zte/msm7x27/arch/arm/boot/zImage zImage
 echo "Creating gen1_boot.img..."
-mkbootimg --base 0x02A00000 --kernel zImage --ramdisk ramdisk.gz -o gen1_boot.img
+mkbootimg --base 0x02A00000 --cmdline 'androidboot.hardware=mooncake console=null' --kernel zImage --ramdisk ramdisk.gz -o boot/gen1_boot.img
 echo "Done! gen1_boot.img is ready"
