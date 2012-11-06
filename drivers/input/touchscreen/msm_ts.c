@@ -96,7 +96,7 @@ struct timer_list timer;  //wlyZTE_TS_ZT_005 @2010-03-05
 static uint32_t msm_tsdebug;
 module_param_named(tsdebug, msm_tsdebug, uint, 0664);
 
-#if defined(CONFIG_MACH_v9)
+#if defined(CONFIG_MACH_V9)
 //static int32_t msm_tscal_scaler = 65536;
 static int32_t msm_tscal_xscale = 34875;
 static int32_t msm_tscal_xoffset = -26*65536;
@@ -279,7 +279,7 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 
 				// Finger1
                 	        input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 255);
-#if defined(CONFIG_MACH_v9)
+#if defined(CONFIG_MACH_V9)
                       		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
                         	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 240 + pinch_x);
                         	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 400 - pinch_y);
