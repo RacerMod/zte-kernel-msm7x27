@@ -212,6 +212,21 @@ config FB_MSM_LCDC_HIMAX_QVGA725A
 	select FB_MSM_LCDC_PANEL
 	default n
 
+config FB_MSM_LCDC_LEAD_QVGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_LCDC_HIMAX_QVGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_LCDC_SAMSUNG_QVGA
+	bool
+	select FB_MSM_LCDC_PANEL
+	default n
+
 config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
 	bool
 	select FB_MSM_MIPI_DSI_TOSHIBA
@@ -505,24 +520,28 @@ config FB_MSM_LCDC_HIMAX_WQVGA_PANEL727
 	select FB_MSM_LCDC_HIMAX_WQVGA727
 	---help---
 	  Support for LCDC HiMax WQVGA (400x240) panel
+
 config FB_MSM_LCDC_HIMAX_WQVGA_PANEL722
 	depends on FB_MSM_LCDC_HW
 	bool "LCDC HiMax WQVGA Panel Raise"
 	select FB_MSM_LCDC_HIMAX_WQVGA722
 	---help---
 	  Support for LCDC HiMax WQVGA (400x240) panel
+
 config FB_MSM_LCDC_SKATE_WVGA_PANEL
 	depends on FB_MSM_LCDC_HW
 	bool "LCDC skate WVGA Panel"
 	select FB_MSM_LCDC_SKATE_WVGA
 	---help---
 	  Support for LCDC skate WVGA (480x800) panel
+
 config FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA_PANEL
 	depends on FB_MSM_LCDC_HW
 	bool "LCDC skate (test sample) WVGA Panel"
 	select FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA
 	---help---
 	  Support for LCDC skate (dev phone) WVGA (480x800) panel
+
 config FB_MSM_LCDC_LEAD_QVGA_PANEL
 	depends on FB_MSM_LCDC_HW
 	bool "LCDC Lead QVGA Panel"
@@ -536,12 +555,14 @@ config FB_MSM_LCDC_HIMAX_QVGA_PANEL
 	select FB_MSM_LCDC_HIMAX_QVGA
 	---help---
 	  Support for LCDC HIMAX QVGA (240x320) panel
+
 config FB_MSM_LCDC_HVGA_ROAMER_PANEL
 	depends on FB_MSM_LCDC_HW
 	bool "LCDC HVGA ROAMER Panel"
 	select FB_MSM_LCDC_HVGA_ROAMER
 	---help---
 	  Support for LCDC HVGA ROAMER (320x480) panel
+
 config FB_MSM_LCDC_SAMSUNG_QVGA_PANEL
 	depends on FB_MSM_LCDC_HW
 	bool "LCDC SAMSUNG QVGA Panel"
@@ -604,6 +625,7 @@ config FB_MSM_LCDC_SHARP_WVGA_PT_PANEL
 	select FB_MSM_LCDC_SHARP_WVGA_PT
 	---help---
 	  Support for LCDC Sharp WVGA PT (480x800) panel
+
 config FB_MSM_LCDC_HIMAX_QVGA_725A_PANEL
 	depends on FB_MSM_LCDC_HW
 	bool "LCDC HIMAX QVGA Panel 725A"

@@ -162,6 +162,9 @@ obj-$(CONFIG_FB_MSM_LCDC_QRDC_WXGA) += lcdc_qrdc.o
 obj-$(CONFIG_FB_MSM_LCDC_V9_WVGA) += lcdc_panel_wvga_v9.o
 obj-$(CONFIG_FB_MSM_LCDC_BLADE2_WVGA) += lcdc_panel_wvga_p736v.o
 
+obj-$(CONFIG_FB_MSM_LCDC_LEAD_WVGA) += lcdc_panel_qvga_lead.o
+obj-$(CONFIG_FB_MSM_LCDC_HIMAX_WVGA) += lcdc_panel_qvga_himax.o
+obj-$(CONFIG_FB_MSM_LCDC_SAMSUNG_WVGA) += lcdc_panel_qvga_samsung.o
 
 obj-$(CONFIG_FB_MSM_TVOUT) += tvout_msm.o
 
