@@ -96,6 +96,7 @@ struct timer_list timer;  //wlyZTE_TS_ZT_005 @2010-03-05
 static uint32_t msm_tsdebug;
 module_param_named(tsdebug, msm_tsdebug, uint, 0664);
 
+#if defined(CONFIG_MACH_V9)
 //static int32_t msm_tscal_scaler = 65536;
 static int32_t msm_tscal_xscale = 34875;
 static int32_t msm_tscal_xoffset = -26*65536;
@@ -103,6 +104,15 @@ static int32_t msm_tscal_yscale = 58125;
 static int32_t msm_tscal_yoffset = 0;
 static int32_t msm_tscal_gesture_pressure = 1200;
 static int32_t msm_tscal_gesture_blindspot = 100;
+#else
+// values from pointercal (stock 2.2.2)
+static int32_t msm_tscal_xscale = 17388;
+static int32_t msm_tscal_xoffset = -871728;
+static int32_t msm_tscal_yscale = 25403;
+static int32_t msm_tscal_yoffset = 45240;
+static int32_t msm_tscal_gesture_pressure = 1375; // optimized value
+static int32_t msm_tscal_gesture_blindspot = 30;
+#endif
 //module_param_named(tscal_scaler, msm_tscal_scaler, int, 0664);
 module_param_named(tscal_xscale, msm_tscal_xscale, int, 0664);
 module_param_named(tscal_xoffset, msm_tscal_xoffset, int, 0664);
@@ -257,7 +267,11 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 			}
 			else {
 				int pinch_radius = (y+1)/2;			// Base pinch radius on y position
+#if defined(CONFIG_MACH_V9)
 				int pinch_x = x - 240;				// Get x offset
+#else
+				int pinch_x = x - 120;				// Get x offset
+#endif
 
 				int pinch_y = int_sqrt(pinch_radius*pinch_radius - pinch_x*pinch_x);	// Make sure pinch distance is the same even
 													// if we move x around. Pythagoras is our friend.
@@ -265,15 +279,27 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 
 				// Finger1
                 	        input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 255);
+#if defined(CONFIG_MACH_V9)
                       		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
                         	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 240 + pinch_x);
                         	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 400 - pinch_y);
+#else
+                      		input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 5);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 120 + pinch_x);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 175 - pinch_y);
+#endif
                         	input_mt_sync(ts->input_dev);
 				// Finger2
                         	input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 255);
+#if defined(CONFIG_MACH_V9)
                         	input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 10);
                         	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 240 - pinch_x);
                         	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 400 + pinch_y);
+#else
+                        	input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 5);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_X, 120 - pinch_x);
+                        	input_report_abs(ts->input_dev, ABS_MT_POSITION_Y, 175 + pinch_y);
+#endif
                         	input_mt_sync(ts->input_dev);
 			}
 		} else {
