@@ -75,22 +75,19 @@ struct msm_ts {
 static uint32_t msm_tsdebug;
 module_param_named(tsdebug, msm_tsdebug, uint, 0664);
 
-static int32_t p1 = -76;
-static int32_t p3 = 119;
-
 static int32_t msm_tscal_xscale = 17388;
+static int32_t msm_tscal_xymix = -76;
 static int32_t msm_tscal_xoffset = -871728;
+static int32_t msm_tscal_yxmix = 119;
 static int32_t msm_tscal_yscale = 25403;
 static int32_t msm_tscal_yoffset = 45240;
-//static int32_t msm_tscal_gesture_pressure = 1375; // optimized value
-//static int32_t msm_tscal_gesture_blindspot = 30;
 
 module_param_named(tscal_xscale, msm_tscal_xscale, int, 0664);
+module_param_named(tscal_xymix, msm_tscal_xymix, int, 0664);
 module_param_named(tscal_xoffset, msm_tscal_xoffset, int, 0664);
+module_param_named(tscal_yxmix, msm_tscal_yxmix, int, 0664);
 module_param_named(tscal_yscale, msm_tscal_yscale, int, 0664);
 module_param_named(tscal_yoffset, msm_tscal_yoffset, int, 0664);
-//module_param_named(tscal_gesture_pressure, msm_tscal_gesture_pressure, int, 0664);
-//module_param_named(tscal_gesture_blindspot, msm_tscal_gesture_blindspot, int, 0664);
 
 #define tssc_readl(t, a)	(readl(((t)->tssc_base) + (a)))
 #define tssc_writel(t, v, a)	do {writel(v, ((t)->tssc_base) + (a));} while(0)
@@ -156,10 +153,8 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	}
 
 	/* Calibrate */
-	//x = (x * msm_tscal_xscale + msm_tscal_xoffset + 32768) / 65536;
-	//y = (y * msm_tscal_yscale + msm_tscal_yoffset + 32768) / 65536;
-        x = (x * msm_tscal_xscale + y * p1 + msm_tscal_xoffset ) / 65536;
-        y = (y * msm_tscal_yscale + x * p3 + msm_tscal_yoffset ) / 65536;
+	x = (x * msm_tscal_xscale + y * msm_tscal_xymix + msm_tscal_xoffset ) / 65536;
+	y = (y * msm_tscal_yscale + x * msm_tscal_yxmix + msm_tscal_yoffset ) / 65536;
 
 	if (down)
 	{
