@@ -97,7 +97,6 @@ static uint32_t msm_tsdebug;
 module_param_named(tsdebug, msm_tsdebug, uint, 0664);
 
 #if defined(CONFIG_MACH_V9)
-//static int32_t msm_tscal_scaler = 65536;
 static int32_t msm_tscal_xscale = 34875;
 static int32_t msm_tscal_xoffset = -26*65536;
 static int32_t msm_tscal_yscale = 58125;
@@ -105,21 +104,26 @@ static int32_t msm_tscal_yoffset = 0;
 static int32_t msm_tscal_gesture_pressure = 1200;
 static int32_t msm_tscal_gesture_blindspot = 100;
 #else
-// values from pointercal (stock 2.2.2)
+// values from mooncake pointercal (stock 2.2.2)
 static int32_t msm_tscal_xscale = 17388;
+static int32_t msm_tscal_xymix = -76;
 static int32_t msm_tscal_xoffset = -871728;
+static int32_t msm_tscal_yxmix = 119;
 static int32_t msm_tscal_yscale = 25403;
 static int32_t msm_tscal_yoffset = 45240;
 static int32_t msm_tscal_gesture_pressure = 1375; // optimized value
 static int32_t msm_tscal_gesture_blindspot = 30;
 #endif
-//module_param_named(tscal_scaler, msm_tscal_scaler, int, 0664);
 module_param_named(tscal_xscale, msm_tscal_xscale, int, 0664);
 module_param_named(tscal_xoffset, msm_tscal_xoffset, int, 0664);
 module_param_named(tscal_yscale, msm_tscal_yscale, int, 0664);
 module_param_named(tscal_yoffset, msm_tscal_yoffset, int, 0664);
 module_param_named(tscal_gesture_pressure, msm_tscal_gesture_pressure, int, 0664);
 module_param_named(tscal_gesture_blindspot, msm_tscal_gesture_blindspot, int, 0664);
+#if defined(CONFIG_MACH_MOONCAKE)
+module_param_named(tscal_xymix, msm_tscal_xymix, int, 0664);
+module_param_named(tscal_yxmix, msm_tscal_yxmix, int, 0664);
+#endif
 
 #define tssc_readl(t, a)	(readl(((t)->tssc_base) + (a)))
 #define tssc_writel(t, v, a)	do {writel(v, ((t)->tssc_base) + (a));} while(0)
@@ -169,9 +173,9 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	int x, y, z1, z2;
 	int was_down;
 	int down;
-  int z=0;  //wly
+	int z=0;  //wly
 
-  del_timer_sync(&ts->timer);//ZTE_TS_ZT_005 @2010-03-05
+	del_timer_sync(&ts->timer);//ZTE_TS_ZT_005 @2010-03-05
 	tssc_ctl = tssc_readl(ts, TSSC_CTL);
 	tssc_status = tssc_readl(ts, TSSC_STATUS);
 	tssc_avg12 = tssc_readl(ts, TSSC_AVG_12);
@@ -205,20 +209,17 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 			if( z<=0 ) z = 255;
 		}
 	//ZTE_TS_WLY_20100729,end
-	/* invert the inputs if necessary */
 
+	/* invert the inputs if necessary */
 	if (pdata->inv_x) x = pdata->inv_x - x;
 	if (pdata->inv_y) y = pdata->inv_y - y;
 	//huangjinyu add for calibration
 
-	
 	//ZTE_TS_CRDB00517999,END
 	if (x < 0) x = 0;
 	if (y < 0) y = 0;
 
 	// Calibrate
-//        x = (x*msm_tscal_xscale + msm_tscal_xoffset + msm_tscal_scaler/2)/msm_tscal_scaler;
-//        y = (y*msm_tscal_yscale + msm_tscal_yoffset + msm_tscal_scaler/2)/msm_tscal_scaler;
         x = (x*msm_tscal_xscale + msm_tscal_xoffset + 32768)/65536;
         y = (y*msm_tscal_yscale + msm_tscal_yoffset + 32768)/65536;
 
