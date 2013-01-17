@@ -1,4 +1,4 @@
-/* drivers/input/touchscreen/msm_ts_no_dt.c
+/* drivers/input/touchscreen/msm_ts_no_dt2.c
  *
  * Copyright (C) 2008 Google, Inc.
  * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
@@ -113,11 +113,11 @@ module_param_named(tscal_yoffset, msm_tscal_yoffset, int, 0664);
 static void setup_next_sample(struct msm_ts *ts)
 {
 	uint32_t tmp;
-	/* 7: 6ms debounce time
-	 * 5: 3ms debounce time
-	 * 3: 1.2ms debounce time */
-	tmp = ((1 << 2) | TSSC_CTL_DEBOUNCE_EN | TSSC_CTL_EN_AVERAGE |
+	/* ZTE_TS_ZT_003 @2010-01-28 change debounce time, begin */
+	/* 6ms debounce time, ZTE_TS_WLY_0521 */
+	tmp = ((7 << 7) | TSSC_CTL_DEBOUNCE_EN | TSSC_CTL_EN_AVERAGE |
 	       TSSC_CTL_MODE_MASTER | TSSC_CTL_ENABLE);
+	/* ZTE_TS_ZT_003 @2010-01-28 change debounce time, end */
 	tssc_writel(ts, tmp, TSSC_CTL);
 }
 
@@ -138,6 +138,15 @@ static struct ts_virt_key *find_virt_key(struct msm_ts *ts,
 }
 #endif
 
+/*ZTE_TS_ZT_005 @2010-03-05 begin*/
+static void ts_timer(unsigned long arg)
+{
+	struct msm_ts *ts = (struct msm_ts *)arg;
+ 	input_report_key(ts->input_dev, BTN_TOUCH, 0);
+ 	input_sync(ts->input_dev);
+}
+/*ZTE_TS_ZT_005 @2010-03-05 end*/
+
 static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 {
 	struct msm_ts *ts = dev_id;
@@ -145,9 +154,11 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 
 	uint32_t tssc_avg12, tssc_avg34, tssc_status, tssc_ctl;
 	int x, y, z1, z2;
+	int was_down;
 	int down;
 	int z = 0; //wly
 
+	del_timer_sync(&ts->timer); //ZTE_TS_ZT_005 @2010-03-05
 	tssc_ctl = tssc_readl(ts, TSSC_CTL);
 	tssc_status = tssc_readl(ts, TSSC_STATUS);
 	tssc_avg12 = tssc_readl(ts, TSSC_AVG_12);
@@ -160,14 +171,8 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	z1 = tssc_avg34 & 0xffff;
 	z2 = tssc_avg34 >> 16;
 	//ZTE_TS_WLY_20100729,begin
-	/* invert the inputs if necessary */
-	if (pdata->inv_x) x = pdata->inv_x - x;
-	if (pdata->inv_y) y = pdata->inv_y - y;
-
-	if (x < 0) x = 0;
-	if (y < 0) y = 0;
-
 	down = !(tssc_ctl & TSSC_CTL_PENUP_IRQ);
+	was_down = ts->ts_down;
 	ts->ts_down = down;
 
 	/* no valid data */
@@ -179,13 +184,22 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 		       __func__, down, x, y, z1, z2, tssc_status);
 	if (down)
 	{
-		if (0 == z1) return IRQ_HANDLED;
+		//if (0 == z1) return IRQ_HANDLED;
+		//z = ((2 * z2 - 2 * z1 - 3) * x) / (2 * z1 + 3);
 		z = ((z2 - z1 - 2) * x) / (z1 + 2);
 		z = (2500 - z) * 1000 / (2500 - 900);
 		//printk("msm_ts_irq,z=%d,z1=%d,z2=%d,x=%d\n",z,z1,z2,x);
-		if (z < 0) return IRQ_HANDLED;
+		if (z <= 0) z = 255;
 	}
 	//ZTE_TS_WLY_20100729,end
+
+	/* invert the inputs if necessary */
+	if (pdata->inv_x) x = pdata->inv_x - x;
+	if (pdata->inv_y) y = pdata->inv_y - y;
+	//huangjinyu add for calibration
+
+	if (x < 0) x = 0;
+	if (y < 0) y = 0;
 
 	/* Calibrate */
 	x = (x * msm_tscal_xscale + y * msm_tscal_xymix + msm_tscal_xoffset ) / 65536;
@@ -224,15 +238,15 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 #endif
 
 	if (down) {
+		//printk("huangjinyu x= %d ,y= %d \n",x,y);
 		input_report_abs(ts->input_dev, ABS_X, x);
 		input_report_abs(ts->input_dev, ABS_Y, y);
 		input_report_abs(ts->input_dev, ABS_PRESSURE, z);
-		input_report_abs(ts->input_dev, ABS_TOOL_WIDTH, 10);
-		//printk("Reported values -> x: %d, y: %d, z: %d, z1: %d, z2: %d\n", x, y, z, z1, z2);
 	}
 	input_report_key(ts->input_dev, BTN_TOUCH, down);
 	input_sync(ts->input_dev);
 
+	if (30 == irq)mod_timer(&ts->timer,jiffies + msecs_to_jiffies(TS_PENUP_TIMEOUT_MS)); //ZTE_TS_ZT_005 @2010-03-05
 	return IRQ_HANDLED;
 }
 
@@ -330,7 +344,7 @@ static ssize_t virtualkeys_show(struct device *dev,
 	printk("wly:%s\n",__FUNCTION__);
 	return strlen (ts_keys_size) + 2;
 }
-static DEVICE_ATTR(virtualkeys, 0664, virtualkeys_show, NULL);
+static DEVICE_ATTR(virtualkeys, 0444, virtualkeys_show, NULL);
 extern struct kobject *android_touch_kobj;
 static struct kobject * virtual_key_kobj;
 static int ts_key_report_init(void)
@@ -407,6 +421,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 		goto err_alloc_input_dev;
 	}
 	ts->input_dev->name = "msm-touchscreen";
+	ts->input_dev->dev.parent = &pdev->dev;
 
 	input_set_drvdata(ts->input_dev, ts);
 
@@ -423,7 +438,6 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	input_set_abs_params(ts->input_dev, ABS_X, pdata->min_x, pdata->max_x, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_Y, pdata->min_y, pdata->max_y, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_PRESSURE, pdata->min_press, pdata->max_press, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_TOOL_WIDTH, 0, 245, 0, 0);
 
 #ifndef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
 	for (i = 0; pdata->vkeys_x && (i < pdata->vkeys_x->num_keys); ++i)
@@ -437,6 +451,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 		goto err_input_dev_reg;
 	}
 
+	setup_timer(&ts->timer, ts_timer, (unsigned long)ts); //ZTE_TS_ZT_005 @2010-03-05
 	msm_ts_hw_init(ts);
 
 	err = request_irq(ts->sample_irq, msm_ts_irq,

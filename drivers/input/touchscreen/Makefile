@@ -39,6 +39,7 @@ obj-$(CONFIG_TOUCHSCREEN_MTOUCH)	+= mtouch.o
 obj-$(CONFIG_TOUCHSCREEN_MK712)		+= mk712.o
 obj-$(CONFIG_TOUCHSCREEN_MSM)		+= msm_ts.o
 obj-$(CONFIG_TOUCHSCREEN_MSM_NO_DT)	+= msm_ts_no_dt.o
+obj-$(CONFIG_TOUCHSCREEN_MSM_NO_DT2)	+= msm_ts_no_dt2.o
 obj-$(CONFIG_TOUCHSCREEN_HP600)		+= hp680_ts_input.o
 obj-$(CONFIG_TOUCHSCREEN_HP7XX)		+= jornada720_ts.o
 obj-$(CONFIG_TOUCHSCREEN_HTCPEN)	+= htcpen.o
