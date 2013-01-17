@@ -2,6 +2,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2013 The CyanogenMod Project
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
