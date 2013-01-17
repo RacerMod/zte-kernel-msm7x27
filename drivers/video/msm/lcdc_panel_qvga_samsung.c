@@ -15,16 +15,16 @@
  *
  * =====================================================================================
  */
-/* ========================================================================================
-when         who        what, where, why                                  comment tag
---------     ----       -----------------------------                --------------------------
-2010-06-11   lht        project mode display panel info         	ZTE_LCD_LHT_20100611_001
-2010-05-11   luya		modify black-screen when bootup		      LCD_LUYA_20100610_01
-2010-04-01   luya		modify gamma setting					ZTE_LCD_LUYA_20100401_001
-2010-03-18   luya		modify some register when init		      ZTE_LCD_LUYA_20100318_001
-2010-02-21   luya		merge samsung IC for QVGA                    ZTE_LCD_LUYA_20100221_001        
-==========================================================================================*/
 
+/* ============================================================================
+when         who    what, where, why                  comment tag
+----------   ----   -------------------------------   -------------------------
+2010-06-11   lht    project mode display panel info   ZTE_LCD_LHT_20100611_001
+2010-05-11   luya   modify black-screen when bootup   LCD_LUYA_20100610_01
+2010-04-01   luya   modify gamma setting              ZTE_LCD_LUYA_20100401_001
+2010-03-18   luya   modify some register when init    ZTE_LCD_LUYA_20100318_001
+2010-02-21   luya   merge samsung IC for QVGA         ZTE_LCD_LUYA_20100221_001
+=============================================================================*/
 
 #include "msm_fb.h"
 #include <asm/gpio.h>
@@ -39,21 +39,20 @@ when         who        what, where, why                                  commen
 #define lcd_bl_min   0
 
 static int lcdc_samsung_regist = 1;
-static boolean is_firsttime = true;		///ZTE_LCD_LUYA_20091221_001
+static boolean is_firsttime = true; //ZTE_LCD_LUYA_20091221_001
 extern uint32 gpio_ic_lead,gpio_ic_himax;
-extern u32 LcdPanleID;   //ZTE_LCD_LHT_20100611_001
+extern u32 LcdPanleID; //ZTE_LCD_LHT_20100611_001
 static int spi_cs;
 static int spi_sclk;
 static int spi_sdi;
 static int spi_sdo;
 static int samsung_reset;
 
-
 static struct msm_panel_common_pdata * lcdc_samsung_pdata;
 //static void gpio_lcd_emuspi_write_one_para(unsigned short addr, unsigned short para);
 static void gpio_lcd_emuspi_write_more_para(int argc, unsigned short argv, ...);
 //static void gpio_lcd_emuspi_read_one_para1(unsigned short addr,uint32 * data);
-/*static void lcdc_samsung_wakeup(void);*/
+//static void lcdc_samsung_wakeup(void);
 static void lcdc_samsung_sleep(void);
 static void lcdc_samsung_init(void);
 static void lcdc_set_bl(struct msm_fb_data_type *mfd);
@@ -64,9 +63,8 @@ static int lcdc_panel_off(struct platform_device *pdev);
 
 static int lcdc_panel_on(struct platform_device *pdev)
 {
-
 	spi_init();
-///ZTE_LCD_LUYA_20091221_001,start	LCD_LUYA_20100610_01
+        //ZTE_LCD_LUYA_20091221_001,start LCD_LUYA_20100610_01
 	if(!is_firsttime)
 	{
 		lcdc_samsung_init();
@@ -76,20 +74,19 @@ static int lcdc_panel_on(struct platform_device *pdev)
 	{
 		is_firsttime = false;
 	}
-///ZTE_LCD_LUYA_20091221_001,end	
+        //ZTE_LCD_LUYA_20091221_001,end
 	return 0;
 }
 
 static void lcdc_samsung_sleep(void)
 {
-
 	gpio_lcd_emuspi_write_more_para(0,0x29);
 	mdelay(10);
 	gpio_lcd_emuspi_write_more_para(0,0x10);
 	mdelay(120);
 }
 
-////ZTE_LCD_LUYA_20100318_001
+//ZTE_LCD_LUYA_20100318_001
 static void lcdc_samsung_init(void)
 {
 	//uint32 gpio_ic6[6];
@@ -138,87 +135,82 @@ static void lcdc_samsung_init(void)
 	gpio_lcd_emuspi_write_more_para(15,0xf8,0x80,0x00,0x17,0x1a,0x1d,0x1e,0x23,0x2e,0x12,0x15,0x22,0x1e,0x04,0x11,0x11);
 
 	gpio_lcd_emuspi_write_more_para(1,0x51,0x7e);
-	gpio_lcd_emuspi_write_more_para(1,0x53,0x2c);//00
+	gpio_lcd_emuspi_write_more_para(1,0x53,0x2c); //00
 	gpio_lcd_emuspi_write_more_para(1,0x55,0x00);
-	gpio_lcd_emuspi_write_more_para(1,0x5e,0x00);//00
+	gpio_lcd_emuspi_write_more_para(1,0x5e,0x00); //00
 	gpio_lcd_emuspi_write_more_para(3,0xca,0x80,0x80,0x20);
 	gpio_lcd_emuspi_write_more_para(1,0xcb,0x01);
 	gpio_lcd_emuspi_write_more_para(2,0xcd,0x7f,0x3f);
 
 	gpio_lcd_emuspi_write_more_para(1,0xf3,0x7f);
 
-//display on
+	//display on
 	gpio_lcd_emuspi_write_more_para(0,0x29);
 	msleep(150);                                     
 
 	pr_debug("lcd module samsung init exit!\n");
-	
 }
 
 
 static void lcdc_set_bl(struct msm_fb_data_type *mfd)
 {
-       /*value range is 1--32*/
-    int current_lel = mfd->bl_level;
-    uint8_t cnt = 0;
-    unsigned long flags;
+	/*value range is 1--32*/
+	int current_lel = mfd->bl_level;
+	uint8_t cnt = 0;
+	unsigned long flags;
 
+	printk( "[ZYF] lcdc_set_bl level=%d, %d\n", 
+		current_lel , mfd->panel_power_on);
 
-    printk( "[ZYF] lcdc_set_bl level=%d, %d\n", 
-		   current_lel , mfd->panel_power_on);
-
-
-    if(!mfd->panel_power_on)
+	if(!mfd->panel_power_on)
 	{
-    	    gpio_direction_output(GPIO_LCD_BL_SC_OUT, 0);			///ZTE_LCD_LUYA_20100201_001
-	    return;
-    	}
+		gpio_direction_output(GPIO_LCD_BL_SC_OUT, 0); //ZTE_LCD_LUYA_20100201_001
+		return;
+	}
 
-    if(current_lel < 1)
-    {
-        current_lel = 0;
-    }
-    if(current_lel > 32)
-    {
-        current_lel = 32;
-    }
+	if(current_lel < 1)
+	{
+		current_lel = 0;
+	}
+	if(current_lel > 32)
+	{
+		current_lel = 32;
+	}
 
-    /*ZTE_BACKLIGHT_WLY_005,@2009-11-28, set backlight as 32 levels, end*/
-    local_irq_save(flags);
-    if(current_lel==0)
-	    gpio_direction_output(GPIO_LCD_BL_SC_OUT, 0);
-    else {
-	    for(cnt = 0;cnt < 33-current_lel;cnt++) //ZTE_KEYBOARD_WLY_CRDB00421949, @2009-12-29
-	    { 
-		    gpio_direction_output(GPIO_LCD_BL_SC_OUT, 1);
-		    udelay(20);
-		    gpio_direction_output(GPIO_LCD_BL_SC_OUT, 0);
-		    udelay(5);
-	    }     
-	    gpio_direction_output(GPIO_LCD_BL_SC_OUT, 1);
-	    mdelay(8);
-
-    }
-    local_irq_restore(flags);
+	/*ZTE_BACKLIGHT_WLY_005,@2009-11-28, set backlight as 32 levels, end*/
+	local_irq_save(flags);
+	if(current_lel==0)
+		gpio_direction_output(GPIO_LCD_BL_SC_OUT, 0);
+	else {
+		for(cnt = 0;cnt < 33-current_lel;cnt++) //ZTE_KEYBOARD_WLY_CRDB00421949, @2009-12-29
+		{ 
+			gpio_direction_output(GPIO_LCD_BL_SC_OUT, 1);
+			udelay(20);
+			gpio_direction_output(GPIO_LCD_BL_SC_OUT, 0);
+			udelay(5);
+		}     
+		gpio_direction_output(GPIO_LCD_BL_SC_OUT, 1);
+		mdelay(8);
+	}
+	local_irq_restore(flags);
 }
 
 static void spi_init(void)
 {
-	spi_sclk = *(lcdc_samsung_pdata->gpio_num);
-	spi_cs   = *(lcdc_samsung_pdata->gpio_num + 1);
-	spi_sdi  = *(lcdc_samsung_pdata->gpio_num + 2);
-	spi_sdo  = *(lcdc_samsung_pdata->gpio_num + 3);
-	samsung_reset = *(lcdc_samsung_pdata->gpio_num + 4);
+	spi_sclk	= *(lcdc_samsung_pdata->gpio_num);
+	spi_cs		= *(lcdc_samsung_pdata->gpio_num + 1);
+	spi_sdi		= *(lcdc_samsung_pdata->gpio_num + 2);
+	spi_sdo		= *(lcdc_samsung_pdata->gpio_num + 3);
+	samsung_reset	= *(lcdc_samsung_pdata->gpio_num + 4);
 
 	gpio_set_value(spi_sclk, 1);
 	gpio_set_value(spi_sdo, 1);
 	gpio_set_value(spi_cs, 1);
 	mdelay(10);
-
 }
+
 static int lcdc_panel_off(struct platform_device *pdev)
 {
-
 	lcdc_samsung_sleep();
 
 	gpio_direction_output(samsung_reset, 0);
@@ -231,8 +223,6 @@ static int lcdc_panel_off(struct platform_device *pdev)
 	return 0;
 }
 
-
-
 static void gpio_lcd_emuspi_write_more_para(int argc, unsigned short argv, ...)
 {
 	unsigned short i,addr;
@@ -240,9 +230,9 @@ static void gpio_lcd_emuspi_write_more_para(int argc, unsigned short argv, ...)
 	va_list args;
 
 	va_start(args, argv);
-	addr= argv;// | 0x7200;
+	addr = argv; //| 0x7200;
 	/*udelay(4);*/
-//	i=0x70;
+        //i=0x70;
 
 	gpio_direction_output(spi_cs, 0);
 	i = addr| 0x000;
@@ -270,7 +260,6 @@ static void gpio_lcd_emuspi_write_more_para(int argc, unsigned short argv, ...)
 		i = i | 0x100;
 	
 		for (j = 0; j < 9; j++) {
-
 			if (i & 0x100)
 				gpio_direction_output(spi_sdo, 1);
 			else
@@ -289,21 +278,21 @@ static void gpio_lcd_emuspi_write_more_para(int argc, unsigned short argv, ...)
 }
 
 static struct msm_fb_panel_data lcdc_samsung_panel_data = {
-       .panel_info = {.bl_max = 32},
-	.on = lcdc_panel_on,
-	.off = lcdc_panel_off,
-       .set_backlight = lcdc_set_bl,
+	.panel_info	= {.bl_max = 32},
+	.on		= lcdc_panel_on,
+	.off		= lcdc_panel_off,
+	.set_backlight	= lcdc_set_bl,
 };
 
 static struct platform_device this_device = {
-	.name   = "lcdc_panel_qvga",
+	.name	= "lcdc_panel_qvga",
 	.id	= 1,
 	.dev	= {
 		.platform_data = &lcdc_samsung_panel_data,
 	}
 };
 
-static int __devinit lcdc_panel_probe(struct platform_device *pdev)
+static int __init lcdc_panel_probe(struct platform_device *pdev)
 {
 	struct msm_panel_info *pinfo;
 	uint32 gpio_ic6[6];
@@ -314,54 +303,55 @@ static int __devinit lcdc_panel_probe(struct platform_device *pdev)
 		lcdc_samsung_pdata = pdev->dev.platform_data;
 		lcdc_samsung_pdata->panel_config_gpio(1);
 		spi_init();	
-		//printk(KERN_INFO "lcd panel ic number on gpio 0xdah %02x,0xd4h gpio_ic6 %02x, %02x,%02x,%02x,%02x!\n",gpio_ic2,gpio_ic6[0],gpio_ic6[1],gpio_ic6[2],gpio_ic6[3],gpio_ic6[4]);
+		printk(KERN_INFO "lcd panel ic number on gpio 0xdah %02x,0xd4h gpio_ic6 %02x, %02x,%02x,%02x,%02x!\n",gpio_ic2,gpio_ic6[0],gpio_ic6[1],gpio_ic6[2],gpio_ic6[3],gpio_ic6[4]);
+
 		/*use the gpio to identify which ic is used*/
-	 if((gpio_ic_himax == 0x47) || (gpio_ic_lead == 0x9325)){
+		if((gpio_ic_himax == 0x47) || (gpio_ic_lead == 0x9325))
+		{
 			printk("Fail to register this samsung driver!\n");
 			lcdc_samsung_regist = 0;
 			return -ENODEV;
-	 }
-	 else{
-	 	LcdPanleID=(u32)LCD_PANEL_P726_S6D04M0X01;   //ZTE_LCD_LHT_20100611_001
-		pinfo = &lcdc_samsung_panel_data.panel_info;
-		pinfo->xres = 240;
-		pinfo->yres = 320;
-		pinfo->type = LCDC_PANEL;
-		pinfo->pdest = DISPLAY_1;
-		pinfo->wait_cycle = 0;
-		pinfo->bpp = 18;
-		pinfo->fb_num = 2;
+		}
+		else
+		{
+	 		LcdPanleID=(u32)LCD_PANEL_P726_S6D04M0X01; //ZTE_LCD_LHT_20100611_001
+			pinfo = &lcdc_samsung_panel_data.panel_info;
+			pinfo->xres = 240;
+			pinfo->yres = 320;
+			pinfo->type = LCDC_PANEL;
+			pinfo->pdest = DISPLAY_1;
+			pinfo->wait_cycle = 0;
+			pinfo->bpp = 18;
+			pinfo->fb_num = 2;
 
-		pinfo->clk_rate = 6144000;
+			pinfo->clk_rate = 6144000;
 		
-		pinfo->lcdc.h_back_porch = 18;
-		pinfo->lcdc.h_front_porch = 3;
-		pinfo->lcdc.h_pulse_width = 4;
-		pinfo->lcdc.v_back_porch = 8;
-		pinfo->lcdc.v_front_porch = 8;
-		pinfo->lcdc.v_pulse_width = 1;
-		pinfo->lcdc.border_clr = 0;	/* blk */
-		pinfo->lcdc.underflow_clr = 0xff;	/* blue */
-		pinfo->lcdc.hsync_skew = 0;
+			pinfo->lcdc.h_back_porch = 18;
+			pinfo->lcdc.h_front_porch = 3;
+			pinfo->lcdc.h_pulse_width = 4;
+			pinfo->lcdc.v_back_porch = 8;
+			pinfo->lcdc.v_front_porch = 8;
+			pinfo->lcdc.v_pulse_width = 1;
+			pinfo->lcdc.border_clr = 0; /* blk */
+			pinfo->lcdc.underflow_clr = 0xff; /* blue */
+			pinfo->lcdc.hsync_skew = 0;
 
-    	ret = platform_device_register(&this_device);
-		
-		return 0;
-	 	}
+			ret = platform_device_register(&this_device);
+
+			return 0;
+		}
 	}
 	msm_fb_add_device(pdev);
-	
+
 	return 0;
 }
 
-static struct platform_driver this_driver = {
-	.probe  = lcdc_panel_probe,
-	.driver = {
-		.name   = "lcdc_panel_qvga",
+static struct platform_driver __refdata this_driver = {
+	.probe	= lcdc_panel_probe,
+	.driver	= {
+		.name	= "lcdc_panel_qvga",
 	},
 };
-
-
 
 static int __init lcdc_samsung_panel_init(void)
 {
@@ -380,4 +370,3 @@ static int __init lcdc_samsung_panel_init(void)
 }
 
 module_init(lcdc_samsung_panel_init);
-
