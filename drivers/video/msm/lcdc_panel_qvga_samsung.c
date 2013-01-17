@@ -303,7 +303,7 @@ static int __init lcdc_panel_probe(struct platform_device *pdev)
 		lcdc_samsung_pdata = pdev->dev.platform_data;
 		lcdc_samsung_pdata->panel_config_gpio(1);
 		spi_init();	
-		printk(KERN_INFO "lcd panel ic number on gpio 0xdah %02x,0xd4h gpio_ic6 %02x, %02x,%02x,%02x,%02x!\n",gpio_ic2,gpio_ic6[0],gpio_ic6[1],gpio_ic6[2],gpio_ic6[3],gpio_ic6[4]);
+		//printk(KERN_INFO "lcd panel ic number on gpio 0xdah %02x,0xd4h gpio_ic6 %02x, %02x,%02x,%02x,%02x!\n",gpio_ic2,gpio_ic6[0],gpio_ic6[1],gpio_ic6[2],gpio_ic6[3],gpio_ic6[4]);
 
 		/*use the gpio to identify which ic is used*/
 		if((gpio_ic_himax == 0x47) || (gpio_ic_lead == 0x9325))

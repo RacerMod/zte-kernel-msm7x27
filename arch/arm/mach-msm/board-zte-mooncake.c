@@ -104,7 +104,7 @@ when         who        what, where, why                             comment tag
 
 #if defined (CONFIG_TOUCHSCREEN_MSM_LEGACY)
 #include <mach/msm_touch.h>
-#elif defined (CONFIG_TOUCHSCREEN_MSM || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT)
+#elif defined (CONFIG_TOUCHSCREEN_MSM) || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT)
 #include <linux/input/msm_ts.h>
 #elif defined (CONFIG_MINI_RACER)
 #include <linux/input/msm_ts.h>
@@ -214,8 +214,6 @@ static char *usb_functions_all[] = {
 };
 
 #include "zte_usb_config.c"
-
-#endif
 
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
 	.nluns		= 1,
