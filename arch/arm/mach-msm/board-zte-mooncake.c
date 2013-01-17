@@ -104,9 +104,10 @@ when         who        what, where, why                             comment tag
 
 #if defined (CONFIG_TOUCHSCREEN_MSM_LEGACY)
 #include <mach/msm_touch.h>
-#elif defined (CONFIG_TOUCHSCREEN_MSM) || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT)
-#include <linux/input/msm_ts.h>
-#elif defined (CONFIG_MINI_RACER)
+#elif defined (CONFIG_TOUCHSCREEN_MSM)\
+ || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT)\
+ || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT2)\
+ || defined (CONFIG_MINI_RACER)
 #include <linux/input/msm_ts.h>
 #endif
 
@@ -2159,7 +2160,9 @@ struct msm_ts_platform_data msm_tssc_pdata ={
 	.y_max		= 319,
 	.pressure_max	= 255,
 };
-#elif defined (CONFIG_TOUCHSCREEN_MSM) || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT)
+#elif defined (CONFIG_TOUCHSCREEN_MSM)\
+ || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT)\
+ || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT2)
 #ifndef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
 struct ts_virt_key virt_key[3] = {
 	{KEY_HOME,0,70, },
@@ -2348,6 +2351,7 @@ static struct platform_device *devices[] __initdata = {
 #if defined (CONFIG_TOUCHSCREEN_MSM_LEGACY)\
  || defined (CONFIG_TOUCHSCREEN_MSM)\
  || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT)\
+ || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT2)\
  || defined (CONFIG_MINI_RACER)
 	&msm_device_tssc,
 #endif
@@ -3107,6 +3111,7 @@ static void __init msm7x2x_init(void)
 #if defined (CONFIG_TOUCHSCREEN_MSM_LEGACY)\
  || defined (CONFIG_TOUCHSCREEN_MSM)\
  || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT)\
+ || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT2)\
  || defined (CONFIG_MINI_RACER)
 	msm_device_tssc.dev.platform_data = &msm_tssc_pdata;
 #endif
