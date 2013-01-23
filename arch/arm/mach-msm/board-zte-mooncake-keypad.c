@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 ZTE Corporation.
- * Copyright (c) 2012-2013, The CyanogenMod Project
+ * Copyright (C) 2012-2013 The CyanogenMod Project
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -12,17 +12,6 @@
  * GNU General Public License for more details.
  *
  */
-
-/*====================================================================================================
-when         who          what, where, why                                  comment tag
-----------   ----------   -----------------------------------------------   --------------------------
-2010-05-20   weilanying   blade_keypad                                      ZTE_KEYPAD_WLY_0520
-2010-04-02   zhangtao     modified the keypad map                           ZTE_KEYPAD_ZT_20100402_001
-2010-03-23   jiangfeng    BLADE core
-2009-12-11   wly          support ftm mode                                  ZTE_FTM_MODE_WLY_001
-2009-10-30   qhhuang      Copy from board-raise-keypad and modify "raise"
-                           to "mooncake" to support mooncake keypad
-====================================================================================================*/
 
 #include <linux/platform_device.h>
 #include <linux/gpio_event.h>
@@ -75,7 +64,6 @@ void zte_get_gpio_for_key(int *keycode)
 	*keycode = keypad_col_gpios[gpio_wakeup_col];
 	pr_info("[IRQWAKE]  wakeup gpio_num %d\n",*keycode);
 }
-//LHX_PM_20110506_01 get which GPIO for BACK HOME MENU
 #endif
 
 /* mooncake keypad platform device information */
@@ -88,11 +76,7 @@ static struct gpio_event_matrix_info mooncake_keypad_matrix_info = {
 	.ninputs		= ARRAY_SIZE(keypad_col_gpios),
 	.settle_time.tv.nsec	= 0,
 	.poll_time.tv.nsec	= 20 * NSEC_PER_MSEC,
-#if 1 // chenjun
-	.flags		= GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_DRIVE_INACTIVE | GPIOKPF_PRINT_UNMAPPED_KEYS
-#else
-	.flags		= GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_DRIVE_INACTIVE | GPIOKPF_ACTIVE_HIGH | GPIOKPF_PRINT_UNMAPPED_KEYS /*| GPIOKPF_PRINT_MAPPED_KEYS*/
-#endif
+	.flags			= GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_DRIVE_INACTIVE | GPIOKPF_PRINT_UNMAPPED_KEYS
 };
 
 static struct gpio_event_info *mooncake_keypad_info[] = {
@@ -120,13 +104,13 @@ extern int zte_get_ftm_flag(void);
 /* ZTE_FTM_MODE_WLY_001, @2009-12-11, END */
 static int __init mooncake_init_keypad(void)
 {
-        /* ZTE_FTM_MODE_WLY_001, @2009-12-11, START */
+/* ZTE_FTM_MODE_WLY_001, @2009-12-11, START */
 #ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 	int ftm_flag;
 	ftm_flag = zte_get_ftm_flag();
 	if (1 == ftm_flag)return 0;
 #endif
-        /* ZTE_FTM_MODE_WLY_001, @2009-12-11, START */
+/* ZTE_FTM_MODE_WLY_001, @2009-12-11, START */
 	mooncake_keypad_matrix_info.keymap = keypad_keymap_mooncake;
 #ifdef CONFIG_MSM_GPIO_WAKE
 	p_keypad_keymap = mooncake_keypad_matrix_info.keymap; //LHX_PM_20110506_01 get which GPIO for BACK HOME MENU
