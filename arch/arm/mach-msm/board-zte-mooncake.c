@@ -1,7 +1,6 @@
 /*
  * Copyright (C) 2007 Google, Inc.
- * Copyright (C) 2008-2010 Code Aurora Forum. All rights reserved.
- * Copyright (C) 2011-2013 The CyanogenMod Project
+ * Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -23,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/bootmem.h>
 #include <linux/power_supply.h>
+
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
@@ -48,27 +48,27 @@
 #include <mach/memory.h>
 #include <mach/msm_battery.h>
 #include <mach/rpc_server_handset.h>
+#include <mach/msm_tsif.h>
 
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/i2c.h>
-
 #include <linux/i2c-gpio.h> 
 
 #include <linux/android_pmem.h>
 #include <mach/camera.h>
-#include <linux/proc_fs.h>
-#include <mach/zte_memlog.h>
+
 #include "devices.h"
 #include "socinfo.h"
 #include "clock.h"
 #include "msm-keypad-devices.h"
-#ifdef CONFIG_USB_ANDROID
-#include <linux/usb/android_composite.h>
-#endif
 #include "pm.h"
 #ifdef CONFIG_ARCH_MSM7X27
 #include <linux/msm_kgsl.h>
+#endif
+
+#ifdef CONFIG_USB_ANDROID
+#include <linux/usb/android_composite.h>
 #endif
 
 #if defined (CONFIG_TOUCHSCREEN_MSM_LEGACY)
@@ -79,6 +79,14 @@
 #include <linux/input/msm_ts.h>
 #endif
 
+#ifdef CONFIG_ARCH_MSM7X25
+#define MSM_PMEM_MDP_SIZE	0xb21000
+#define MSM_PMEM_ADSP_SIZE	0x97b000
+#define MSM_PMEM_AUDIO_SIZE	0x121000
+#define MSM_FB_SIZE		0x200000
+#define PMEM_KERNEL_EBI1_SIZE	0x64000
+#endif
+
 #ifdef CONFIG_ARCH_MSM7X27
 #define MSM_PMEM_MDP_SIZE	0x1B76000
 #define MSM_PMEM_ADSP_SIZE	0xB71000
@@ -87,17 +95,6 @@
 #define PMEM_KERNEL_EBI1_SIZE	0x1C000
 /* Using lower 1MB of OEMSBL memory for GPU_PHYS */
 #define MSM_GPU_PHYS_START_ADDR	0xD600000ul
-#endif
-
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
-#define MSM_RAM_CONSOLE_PHYS	(PHYS_OFFSET - 0x100000)
-#define MSM_RAM_CONSOLE_SIZE	SZ_1M
-#endif
-
-static smem_global *global;
-
-#ifdef CONFIG_ZTE_PLATFORM
-static int g_zte_ftm_flag_fixup;
 #endif
 
 /* Using upper 1/2MB of Apps Bootloader memory*/
@@ -117,23 +114,49 @@ static struct resource smc91x_resources[] = {
 };
 
 #ifdef CONFIG_USB_FUNCTION
+static struct usb_mass_storage_platform_data usb_mass_storage_pdata = {
+	.nluns          = 0x02,
+	.buf_size       = 16384,
+	.vendor         = "GOOGLE",
+	.product        = "Mass storage",
+	.release        = 0xffff,
+};
+
 static struct platform_device mass_storage_device = {
 	.name           = "usb_mass_storage",
 	.id             = -1,
 	.dev            = {
-		.platform_data = &usb_mass_storage_pdata,
+		.platform_data          = &usb_mass_storage_pdata,
 	},
 };
 #endif
-
-static struct platform_device smc91x_device = {
-	.name		= "smc91x",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(smc91x_resources),
-	.resource	= smc91x_resources,
+#ifdef CONFIG_USB_ANDROID
+static char *usb_functions_default[] = {
+	"diag",
+	"modem",
+	"nmea",
+	"rmnet",
+	"usb_mass_storage",
 };
 
-#ifdef CONFIG_USB_ANDROID
+static char *usb_functions_default_adb[] = {
+	"diag",
+	"adb",
+	"modem",
+	"nmea",
+	"rmnet",
+	"usb_mass_storage",
+};
+
+static char *usb_functions_rndis[] = {
+	"rndis",
+};
+
+static char *usb_functions_rndis_adb[] = {
+	"rndis",
+	"adb",
+};
+
 static char *usb_functions_all[] = {
 #ifdef CONFIG_USB_ANDROID_RNDIS
 	"rndis",
@@ -153,12 +176,30 @@ static char *usb_functions_all[] = {
 #ifdef CONFIG_USB_ANDROID_ACM
 	"acm",
 #endif
-#ifdef CONFIG_USB_ANDROID_AT
-	"at"
-#endif
 };
 
-#include "zte_usb_config.c"
+static struct android_usb_product usb_products[] = {
+	{
+		.product_id	= 0x9026,
+		.num_functions	= ARRAY_SIZE(usb_functions_default),
+		.functions	= usb_functions_default,
+	},
+	{
+		.product_id	= 0x9025,
+		.num_functions	= ARRAY_SIZE(usb_functions_default_adb),
+		.functions	= usb_functions_default_adb,
+	},
+	{
+		.product_id	= 0xf00e,
+		.num_functions	= ARRAY_SIZE(usb_functions_rndis),
+		.functions	= usb_functions_rndis,
+	},
+	{
+		.product_id	= 0x9024,
+		.num_functions	= ARRAY_SIZE(usb_functions_rndis_adb),
+		.functions	= usb_functions_rndis_adb,
+	},
+};
 
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
 	.nluns		= 1,
@@ -175,6 +216,12 @@ static struct platform_device usb_mass_storage_device = {
 	},
 };
 
+static struct usb_ether_platform_data rndis_pdata = {
+	/* ethaddr is filled by board_serialno_setup */
+	.vendorID	= 0x05C6,
+	.vendorDescr	= "Qualcomm Incorporated",
+};
+
 static struct platform_device rndis_device = {
 	.name	= "rndis",
 	.id	= -1,
@@ -183,13 +230,156 @@ static struct platform_device rndis_device = {
 	},
 };
 
+static struct android_usb_platform_data android_usb_pdata = {
+	.vendor_id	= 0x05C6,
+	.product_id	= 0x9026,
+	.version	= 0x0100,
+	.product_name		= "Qualcomm HSUSB Device",
+	.manufacturer_name	= "Qualcomm Incorporated",
+	.num_products = ARRAY_SIZE(usb_products),
+	.products = usb_products,
+	.num_functions = ARRAY_SIZE(usb_functions_all),
+	.functions = usb_functions_all,
+	.serial_number = "1234567890ABCDEF",
+};
+
 static struct platform_device android_usb_device = {
 	.name	= "android_usb",
-	.id	= -1,
-	.dev	= {
+	.id		= -1,
+	.dev		= {
 		.platform_data = &android_usb_pdata,
 	},
 };
+
+static int __init board_serialno_setup(char *serialno)
+{
+	int i;
+	char *src = serialno;
+
+	/* create a fake MAC address from our serial number.
+	 * first byte is 0x02 to signify locally administered.
+	 */
+	rndis_pdata.ethaddr[0] = 0x02;
+	for (i = 0; *src; i++) {
+		/* XOR the USB serial across the remaining bytes */
+		rndis_pdata.ethaddr[i % (ETH_ALEN - 1) + 1] ^= *src++;
+	}
+
+	android_usb_pdata.serial_number = serialno;
+	return 1;
+}
+__setup("androidboot.serialno=", board_serialno_setup);
+#endif
+
+static struct platform_device smc91x_device = {
+	.name		= "smc91x",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(smc91x_resources),
+	.resource	= smc91x_resources,
+};
+
+#ifdef CONFIG_USB_FUNCTION
+static struct usb_function_map usb_functions_map[] = {
+	{"diag", 0},
+	{"adb", 1},
+	{"modem", 2},
+	{"nmea", 3},
+	{"mass_storage", 4},
+	{"ethernet", 5},
+	{"rmnet", 6},
+};
+
+/* dynamic composition */
+static struct usb_composition usb_func_composition[] = {
+	{
+		.product_id         = 0x9012,
+		.functions	    = 0x5, /* 0101 */
+	},
+
+	{
+		.product_id         = 0x9013,
+		.functions	    = 0x15, /* 10101 */
+	},
+
+	{
+		.product_id         = 0x9014,
+		.functions	    = 0x30, /* 110000 */
+	},
+
+	{
+		.product_id         = 0x9016,
+		.functions	    = 0xD, /* 01101 */
+	},
+
+	{
+		.product_id         = 0x9017,
+		.functions	    = 0x1D, /* 11101 */
+	},
+
+	{
+		.product_id         = 0xF000,
+		.functions	    = 0x10, /* 10000 */
+	},
+
+	{
+		.product_id         = 0xF009,
+		.functions	    = 0x20, /* 100000 */
+	},
+
+	{
+		.product_id         = 0x9018,
+		.functions	    = 0x1F, /* 011111 */
+	},
+#ifdef CONFIG_USB_FUNCTION_RMNET
+	{
+		.product_id         = 0x9021,
+		/* DIAG + RMNET */
+		.functions	    = 0x41,
+	},
+	{
+		.product_id         = 0x9022,
+		/* DIAG + ADB + RMNET */
+		.functions	    = 0x43,
+	},
+#endif
+
+};
+
+static struct msm_hsusb_platform_data msm_hsusb_pdata = {
+	.version	= 0x0100,
+	.phy_info	= (USB_PHY_INTEGRATED | USB_PHY_MODEL_65NM),
+	.vendor_id          = 0x5c6,
+	.product_name       = "Qualcomm HSUSB Device",
+	.serial_number      = "1234567890ABCDEF",
+	.manufacturer_name  = "Qualcomm Incorporated",
+	.compositions	= usb_func_composition,
+	.num_compositions = ARRAY_SIZE(usb_func_composition),
+	.function_map   = usb_functions_map,
+	.num_functions	= ARRAY_SIZE(usb_functions_map),
+	.config_gpio    = NULL,
+};
+#endif
+
+#ifdef CONFIG_USB_EHCI_MSM
+static void msm_hsusb_vbus_power(unsigned phy_info, int on)
+{
+	if (on)
+		msm_hsusb_vbus_powerup();
+	else
+		msm_hsusb_vbus_shutdown();
+}
+
+static struct msm_usb_host_platform_data msm_usb_host_pdata = {
+	.phy_info       = (USB_PHY_INTEGRATED | USB_PHY_MODEL_65NM),
+};
+
+static void __init msm7x2x_init_host(void)
+{
+	if (machine_is_msm7x25_ffa() || machine_is_msm7x27_ffa())
+		return;
+
+	msm_add_host(0, &msm_usb_host_pdata);
+}
 #endif
 
 #ifdef CONFIG_USB_MSM_OTG_72K
@@ -200,7 +390,9 @@ static int hsusb_rpc_connect(int connect)
 	else
 		return msm_hsusb_rpc_close();
 }
+#endif
 
+#ifdef CONFIG_USB_MSM_OTG_72K
 struct vreg *vreg_3p3;
 static int msm_hsusb_ldo_init(int init)
 {
@@ -248,22 +440,17 @@ static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init)
 	return ret;
 }
 
-#ifdef CONFIG_ZTE_PLATFORM
-static int msm_hsusb_rpc_phy_reset(void __iomem *addr)
+static int msm_otg_rpc_phy_reset(void __iomem *regs)
 {
-        return msm_hsusb_phy_reset();
+	return msm_hsusb_phy_reset();
 }
-#endif
 
 static struct msm_otg_platform_data msm_otg_pdata = {
-	.rpc_connect		= hsusb_rpc_connect,
-#ifdef CONFIG_ZTE_PLATFORM
-	.phy_reset		= msm_hsusb_rpc_phy_reset,
-#endif
-	.pmic_vbus_notif_init	= msm_hsusb_pmic_notif_init,
-	.chg_vbus_draw		= hsusb_chg_vbus_draw,
-	.chg_connected		= hsusb_chg_connected,
-	.chg_init		= hsusb_chg_init,
+	.rpc_connect	= hsusb_rpc_connect,
+	.pmic_vbus_notif_init         = msm_hsusb_pmic_notif_init,
+	.chg_vbus_draw		 = hsusb_chg_vbus_draw,
+	.chg_connected		 = hsusb_chg_connected,
+	.chg_init		 = hsusb_chg_init,
 #ifdef CONFIG_USB_EHCI_MSM
 	.vbus_power = msm_hsusb_vbus_power,
 #endif
@@ -271,6 +458,10 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.ldo_enable		= msm_hsusb_ldo_enable,
 	.pclk_required_during_lpm = 1
 };
+
+#ifdef CONFIG_USB_GADGET
+static struct msm_hsusb_gadget_platform_data msm_gadget_pdata;
+#endif
 #endif
 
 #define SND(desc, num) { .name = #desc, .id = num }
@@ -296,9 +487,9 @@ static struct msm_snd_endpoints msm_device_snd_endpoints = {
 };
 
 static struct platform_device msm_device_snd = {
-	.name	= "msm_snd",
-	.id	= -1,
-	.dev	= {
+	.name = "msm_snd",
+	.id = -1,
+	.dev    = {
 		.platform_data = &msm_device_snd_endpoints
 	},
 };
@@ -309,19 +500,34 @@ static struct platform_device msm_device_snd = {
 	(1<<MSM_ADSP_CODEC_AMRNB)|(1<<MSM_ADSP_CODEC_WAV)| \
 	(1<<MSM_ADSP_CODEC_ADPCM)|(1<<MSM_ADSP_CODEC_YADPCM)| \
 	(1<<MSM_ADSP_CODEC_EVRC)|(1<<MSM_ADSP_CODEC_QCELP))
+#ifdef CONFIG_ARCH_MSM7X25
 #define DEC1_FORMAT ((1<<MSM_ADSP_CODEC_WAV)|(1<<MSM_ADSP_CODEC_ADPCM)| \
 	(1<<MSM_ADSP_CODEC_YADPCM)|(1<<MSM_ADSP_CODEC_QCELP)| \
 	(1<<MSM_ADSP_CODEC_MP3))
 #define DEC2_FORMAT ((1<<MSM_ADSP_CODEC_WAV)|(1<<MSM_ADSP_CODEC_ADPCM)| \
 	(1<<MSM_ADSP_CODEC_YADPCM)|(1<<MSM_ADSP_CODEC_QCELP)| \
 	(1<<MSM_ADSP_CODEC_MP3))
-
-#ifdef CONFIG_ARCH_MSM7X25
 #define DEC3_FORMAT 0
 #define DEC4_FORMAT 0
 #else
-#define DEC3_FORMAT ((1<<MSM_ADSP_CODEC_WAV)|(1<<MSM_ADSP_CODEC_ADPCM)| \
-	(1<<MSM_ADSP_CODEC_YADPCM)|(1<<MSM_ADSP_CODEC_QCELP))
+#define DEC1_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
+	(1<<MSM_ADSP_CODEC_AAC)|(1<<MSM_ADSP_CODEC_WMA)| \
+	(1<<MSM_ADSP_CODEC_WMAPRO)|(1<<MSM_ADSP_CODEC_AMRWB)| \
+	(1<<MSM_ADSP_CODEC_AMRNB)|(1<<MSM_ADSP_CODEC_WAV)| \
+	(1<<MSM_ADSP_CODEC_ADPCM)|(1<<MSM_ADSP_CODEC_YADPCM)| \
+	(1<<MSM_ADSP_CODEC_EVRC)|(1<<MSM_ADSP_CODEC_QCELP))
+#define DEC2_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
+	(1<<MSM_ADSP_CODEC_AAC)|(1<<MSM_ADSP_CODEC_WMA)| \
+	(1<<MSM_ADSP_CODEC_WMAPRO)|(1<<MSM_ADSP_CODEC_AMRWB)| \
+	(1<<MSM_ADSP_CODEC_AMRNB)|(1<<MSM_ADSP_CODEC_WAV)| \
+	(1<<MSM_ADSP_CODEC_ADPCM)|(1<<MSM_ADSP_CODEC_YADPCM)| \
+	(1<<MSM_ADSP_CODEC_EVRC)|(1<<MSM_ADSP_CODEC_QCELP))
+#define DEC3_FORMAT ((1<<MSM_ADSP_CODEC_MP3)| \
+	(1<<MSM_ADSP_CODEC_AAC)|(1<<MSM_ADSP_CODEC_WMA)| \
+	(1<<MSM_ADSP_CODEC_WMAPRO)|(1<<MSM_ADSP_CODEC_AMRWB)| \
+	(1<<MSM_ADSP_CODEC_AMRNB)|(1<<MSM_ADSP_CODEC_WAV)| \
+	(1<<MSM_ADSP_CODEC_ADPCM)|(1<<MSM_ADSP_CODEC_YADPCM)| \
+	(1<<MSM_ADSP_CODEC_EVRC)|(1<<MSM_ADSP_CODEC_QCELP))
 #define DEC4_FORMAT (1<<MSM_ADSP_CODEC_MIDI)
 #endif
 
@@ -367,6 +573,10 @@ static unsigned int dec_concurrency_table[] = {
 
 	/* Concurrency 6 */
 	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
+	0, 0, 0, 0,
+
+	/* Concurrency 7 */
+	(DEC0_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
 	(DEC1_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
 	(DEC2_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
 	(DEC3_FORMAT|(1<<MSM_ADSP_MODE_NONTUNNEL)|(1<<MSM_ADSP_OP_DM)),
@@ -379,13 +589,15 @@ static unsigned int dec_concurrency_table[] = {
 
 static struct msm_adspdec_info dec_info_list[] = {
 	DEC_INFO("AUDPLAY0TASK", 13, 0, 11), /* AudPlay0BitStreamCtrlQueue */
+#ifdef CONFIG_ARCH_MSM7X25
 	DEC_INFO("AUDPLAY1TASK", 14, 1, 5),  /* AudPlay1BitStreamCtrlQueue */
 	DEC_INFO("AUDPLAY2TASK", 15, 2, 5),  /* AudPlay2BitStreamCtrlQueue */
-#ifdef CONFIG_ARCH_MSM7X25
 	DEC_INFO("AUDPLAY3TASK", 16, 3, 0),  /* AudPlay3BitStreamCtrlQueue */
 	DEC_INFO("AUDPLAY4TASK", 17, 4, 0),  /* AudPlay4BitStreamCtrlQueue */
 #else
-	DEC_INFO("AUDPLAY3TASK", 16, 3, 4),  /* AudPlay3BitStreamCtrlQueue */
+	DEC_INFO("AUDPLAY1TASK", 14, 1, 11),  /* AudPlay1BitStreamCtrlQueue */
+	DEC_INFO("AUDPLAY2TASK", 15, 2, 11),  /* AudPlay2BitStreamCtrlQueue */
+	DEC_INFO("AUDPLAY3TASK", 16, 3, 11),  /* AudPlay3BitStreamCtrlQueue */
 	DEC_INFO("AUDPLAY4TASK", 17, 4, 1),  /* AudPlay4BitStreamCtrlQueue */
 #endif
 };
@@ -399,9 +611,9 @@ static struct msm_adspdec_database msm_device_adspdec_database = {
 };
 
 static struct platform_device msm_device_adspdec = {
-	.name	= "msm_adspdec",
-	.id	= -1,
-	.dev	= {
+	.name = "msm_adspdec",
+	.id = -1,
+	.dev    = {
 		.platform_data = &msm_device_adspdec_database
 	},
 };
@@ -662,10 +874,9 @@ bail:
 
 	return rc;
 }
-
 static struct lcdc_platform_data lcdc_pdata = {
-	.lcdc_gpio_config	= msm_fb_lcdc_config,
-	.lcdc_power_save	= msm_fb_lcdc_power_save,
+	.lcdc_gpio_config = msm_fb_lcdc_config,
+	.lcdc_power_save   = msm_fb_lcdc_power_save,
 };
 
 static struct msm_panel_common_pdata lcdc_qvga_panel_data = {
@@ -683,7 +894,7 @@ static struct platform_device lcdc_qvga_panel_device = {
 
 static struct resource msm_fb_resources[] = {
 	{
-		.flags = IORESOURCE_DMA,
+		.flags  = IORESOURCE_DMA,
 	}
 };
 
@@ -707,11 +918,11 @@ static struct msm_fb_platform_data msm_fb_pdata = {
 };
 
 static struct platform_device msm_fb_device = {
-	.name		= "msm_fb",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(msm_fb_resources),
-	.resource	= msm_fb_resources,
-	.dev		= {
+	.name   = "msm_fb",
+	.id     = 0,
+	.num_resources  = ARRAY_SIZE(msm_fb_resources),
+	.resource       = msm_fb_resources,
+	.dev    = {
 		.platform_data = &msm_fb_pdata,
 	}
 };
@@ -720,12 +931,6 @@ static struct platform_device msm_fb_device = {
 static struct platform_device msm_bt_power_device = {
 	.name = "bt_power",
 };
-
-//compatible of qualcomm and broadcom bluetooth chip ZTE_BT_QXX_20101207 begin
-static struct platform_device msm_bcm_power_device = {
-	.name = "bcm_power",
-};
-//compatible of qualcomm and broadcom bluetooth chip ZTE_BT_QXX_20101207 end
 
 enum {
 	BT_WAKE,
@@ -852,73 +1057,9 @@ static int bluetooth_power(int on)
 	return 0;
 }
 
-//compatible of qualcomm and broadcom bluetooth chip ZTE_BT_QXX_20101207 begin
-static int bcm_power(int on)
-{
-	//struct vreg *vreg_bt;
-	int pin, rc;
-
-	printk(KERN_DEBUG "%s\n", __func__);
-
-	if (on)
-	{
-		for (pin = 0; pin < ARRAY_SIZE(bt_config_power_on); pin++) {
-			rc = gpio_tlmm_config(bt_config_power_on[pin],
-					      GPIO_ENABLE);
-			if (rc) {
-				printk(KERN_ERR
-				       "%s: gpio_tlmm_config(%#x)=%d\n",
-				       __func__, bt_config_power_on[pin], rc);
-				return -EIO;
-			}
-		}
-
-		rc = gpio_request(20, "bt_reset");
-		if(!rc)
-		{
-			gpio_direction_output(20, 0);
-			mdelay(1);
-			gpio_direction_output(20, 1);
-		}
-		else
-		{
-			printk(KERN_ERR "gpio_request: %d failed!\n", 20);
-		}
-		gpio_free(20);
-	}
-	else
-	{
-		for (pin = 0; pin < ARRAY_SIZE(bt_config_power_off); pin++) {
-			rc = gpio_tlmm_config(bt_config_power_off[pin],
-					      GPIO_ENABLE);
-			if (rc) {
-				printk(KERN_ERR
-				       "%s: gpio_tlmm_config(%#x)=%d\n",
-				       __func__, bt_config_power_off[pin], rc);
-				return -EIO;
-			}
-		}
-
-		rc = gpio_request(20, "bt_reset");
-		if(!rc)
-		{
-			gpio_direction_output(20, 0);
-		}
-		else
-		{
-			printk(KERN_ERR "gpio_request: %d failed!\n", 20);
-		}
-
-		gpio_free(20);
-	}
-	return 0;
-}
-//compatible of qualcomm and broadcom bluetooth chip ZTE_BT_QXX_20101207 end
-
 static void __init bt_power_init(void)
 {
 	msm_bt_power_device.dev.platform_data = &bluetooth_power;
-	msm_bcm_power_device.dev.platform_data = &bcm_power; //compatible of qualcomm and broadcom bluetooth chip ZTE_BT_QXX_20101207
 }
 #else
 #define bt_power_init(x) do {} while (0)
@@ -927,27 +1068,27 @@ static void __init bt_power_init(void)
 #ifdef CONFIG_ARCH_MSM7X27
 static struct resource kgsl_resources[] = {
 	{
-		.name	= "kgsl_reg_memory",
-		.start	= 0xA0000000,
-		.end	= 0xA001ffff,
-		.flags	= IORESOURCE_MEM,
+		.name = "kgsl_reg_memory",
+		.start = 0xA0000000,
+		.end = 0xA001ffff,
+		.flags = IORESOURCE_MEM,
 	},
 	{
-		.name	= "kgsl_yamato_irq",
-		.start	= INT_GRAPHICS,
-		.end	= INT_GRAPHICS,
-		.flags	= IORESOURCE_IRQ,
+		.name = "kgsl_yamato_irq",
+		.start = INT_GRAPHICS,
+		.end = INT_GRAPHICS,
+		.flags = IORESOURCE_IRQ,
 	},
 };
 
 static struct kgsl_platform_data kgsl_pdata;
 
 static struct platform_device msm_device_kgsl = {
-	.name		= "kgsl",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(kgsl_resources),
-	.resource	= kgsl_resources,
-	.dev		= {
+	.name = "kgsl",
+	.id = -1,
+	.num_resources = ARRAY_SIZE(kgsl_resources),
+	.resource = kgsl_resources,
+	.dev = {
 		.platform_data = &kgsl_pdata,
 	},
 };
@@ -987,8 +1128,8 @@ static struct resource bluesleep_resources[] = {
 	},
 	{
 		.name	= "gpio_ext_wake",
-		.start	= 90,   
-		.end	= 90,     
+		.start	= 90,
+		.end	= 90,
 		.flags	= IORESOURCE_IO,
 	},
 	{
@@ -1000,20 +1141,11 @@ static struct resource bluesleep_resources[] = {
 };
 
 static struct platform_device msm_bluesleep_device = {
-	.name		= "bluesleep",
+	.name = "bluesleep",
 	.id		= -1,
 	.num_resources	= ARRAY_SIZE(bluesleep_resources),
 	.resource	= bluesleep_resources,
 };
-
-//compatible of qualcomm and broadcom bluetooth chip ZTE_BT_QXX_20101207 begin
-static struct platform_device msm_bcmsleep_device = {
-	.name		= "bcmsleep",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(bluesleep_resources),
-	.resource	= bluesleep_resources,
-};
-//compatible of qualcomm and broadcom bluetooth chip ZTE_BT_QXX_20101207 end
 
 static struct i2c_board_info i2c_devices[] = {
 #if defined (CONFIG_MSENSORS_FROM_AUXI2C_TO_I2C) && !defined (CONFIG_SENSORS_AK8973)
@@ -1622,10 +1754,10 @@ static const BattFuelCapacity fuelCapacity[] = {
 };
 
 static struct msm_psy_batt_pdata msm_psy_batt_data = {
-	.voltage_min_design	= 2800,
+	.voltage_min_design 	= 2800,
 	.voltage_max_design	= 4300,
-	.avail_chg_sources	= AC_CHG | USB_CHG ,
-	.batt_technology	= POWER_SUPPLY_TECHNOLOGY_LION,
+	.avail_chg_sources   	= AC_CHG | USB_CHG ,
+	.batt_technology        = POWER_SUPPLY_TECHNOLOGY_LION,
 	.calculate_capacity	= &msm_calculate_batt_capacity,
 };
 
@@ -1661,27 +1793,10 @@ static u32 msm_calculate_batt_capacity(u32 current_voltage)
 }
 
 static struct platform_device msm_batt_device = {
-	.name 			= "msm-battery",
-	.id			= -1,
-	.dev.platform_data	= &msm_psy_batt_data,
+	.name 		    = "msm-battery",
+	.id		    = -1,
+	.dev.platform_data  = &msm_psy_batt_data,
 };
-
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
-static struct resource ram_console_resource[] = {
-	{
-		.start	= MSM_RAM_CONSOLE_PHYS,
-		.end	= MSM_RAM_CONSOLE_PHYS + MSM_RAM_CONSOLE_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device ram_console_device = {
-	.name		= "ram_console",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(ram_console_resource),
-	.resource	= ram_console_resource,
-};
-#endif
 
 /* ATHENV */
 static struct platform_device msm_wlan_ar6000_pm_device = {
@@ -1740,20 +1855,10 @@ static struct platform_device *devices[] __initdata = {
 	&android_usb_device,
 #endif
 	&msm_device_i2c,
-
-	&aux_i2c_gpio_device,  
-
-	&aux2_i2c_gpio_device,  
-
+	&aux_i2c_gpio_device,
+	&aux2_i2c_gpio_device,
 	&smc91x_device,
-
-#if defined (CONFIG_TOUCHSCREEN_MSM_LEGACY)\
- || defined (CONFIG_TOUCHSCREEN_MSM)\
- || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT)\
- || defined (CONFIG_TOUCHSCREEN_MSM_NO_DT2)
 	&msm_device_tssc,
-#endif
-	
 	&android_pmem_kernel_ebi1_device,
 	&android_pmem_device,
 	&android_pmem_adsp_device,
@@ -1763,14 +1868,12 @@ static struct platform_device *devices[] __initdata = {
 	&msm_device_uart_dm1,
 #ifdef CONFIG_BT
 	&msm_bt_power_device,
-	&msm_bcm_power_device, //compatible of qualcomm and broadcom bluetooth chip ZTE_BT_QXX_20101207
 #endif
 	&msm_device_pmic_leds,
 	&android_leds, //button-backlight
 	&msm_device_snd,
 	&msm_device_adspdec,
 	&msm_bluesleep_device,
-	&msm_bcmsleep_device, //compatible of qualcomm and broadcom bluetooth chip ZTE_BT_QXX_20101207
 #ifdef CONFIG_ARCH_MSM7X27
 	&msm_device_kgsl,
 #endif
@@ -1802,13 +1905,10 @@ static struct platform_device *devices[] __initdata = {
 
 	&hs_device,
 	&msm_batt_device,
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
-	&ram_console_device,
-#endif
 };
 
 static struct msm_panel_common_pdata mdp_pdata = {
-	.gpio	= 97,
+	.gpio = 97,
 };
 
 static void __init msm_fb_add_devices(void)
@@ -1825,9 +1925,7 @@ static struct i2c_board_info aux_i2c_devices[] = {
 	},
 #endif /* CONFIG_FM_SI4708 */
 };
-/*ZTE_AUX_FYA_001,@2010-02-06,END*/
 
-/*ZTE_AUX2_FYA_001,@2010-02-06,BEGIN+++++++++++*/
 static struct i2c_board_info aux2_i2c_devices[] = {
 #ifdef CONFIG_SENSORS_AK8973
 	{
@@ -1855,41 +1953,20 @@ static void __init msm7x2x_init_irq(void)
 }
 
 static struct msm_acpu_clock_platform_data msm7x2x_clock_data = {
-	.acpu_switch_time_us	= 50,
-	.max_speed_delta_khz	= 400000,
-	.vdd_switch_time_us	= 62,
-	.max_axi_khz		= 160000,
+	.acpu_switch_time_us = 50,
+	.max_speed_delta_khz = 400000,
+	.vdd_switch_time_us = 62,
+	.max_axi_khz = 160000,
 };
 
 void msm_serial_debug_init(unsigned int base, int irq,
 			   struct device *clk_device, int signal_irq);
 
-#ifdef CONFIG_USB_EHCI_MSM
-static void msm_hsusb_vbus_power(unsigned phy_info, int on)
-{
-	if (on)
-		msm_hsusb_vbus_powerup();
-	else
-		msm_hsusb_vbus_shutdown();
-}
+#if (defined(CONFIG_MMC_MSM_SDC1_SUPPORT)\
+	|| defined(CONFIG_MMC_MSM_SDC2_SUPPORT)\
+	|| defined(CONFIG_MMC_MSM_SDC3_SUPPORT)\
+	|| defined(CONFIG_MMC_MSM_SDC4_SUPPORT))
 
-static struct msm_usb_host_platform_data msm_usb_host_pdata = {
-	.phy_info	= (USB_PHY_INTEGRATED | USB_PHY_MODEL_65NM),
-	.vbus_power	= msm_hsusb_vbus_power,
-};
-static void __init msm7x2x_init_host(void)
-{
-	if (machine_is_msm7x25_ffa() || machine_is_msm7x27_ffa())
-		return;
-
-	msm_add_host(0, &msm_usb_host_pdata);
-}
-#endif
-
-#if (defined (CONFIG_MMC_MSM_SDC1_SUPPORT)\
- || defined (CONFIG_MMC_MSM_SDC2_SUPPORT)\
- || defined (CONFIG_MMC_MSM_SDC3_SUPPORT)\
- || defined (CONFIG_MMC_MSM_SDC4_SUPPORT))
 static unsigned long vreg_sts, gpio_sts;
 static struct vreg *vreg_mmc;
 static unsigned mpp_mmc = 2;
@@ -1946,24 +2023,24 @@ static struct msm_gpio sdc4_cfg_data[] = {
 
 static struct sdcc_gpio sdcc_cfg_data[] = {
 	{
-		.cfg_data	= sdc1_cfg_data,
-		.size		= ARRAY_SIZE(sdc1_cfg_data),
-		.sleep_cfg_data	= NULL,
+		.cfg_data = sdc1_cfg_data,
+		.size = ARRAY_SIZE(sdc1_cfg_data),
+		.sleep_cfg_data = NULL,
 	},
 	{
-		.cfg_data	= sdc2_cfg_data,
-		.size		= ARRAY_SIZE(sdc2_cfg_data),
-		.sleep_cfg_data	= sdc2_sleep_cfg_data,
+		.cfg_data = sdc2_cfg_data,
+		.size = ARRAY_SIZE(sdc2_cfg_data),
+		.sleep_cfg_data = sdc2_sleep_cfg_data,
 	},
 	{
-		.cfg_data	= sdc3_cfg_data,
-		.size		= ARRAY_SIZE(sdc3_cfg_data),
-		.sleep_cfg_data	= NULL,
+		.cfg_data = sdc3_cfg_data,
+		.size = ARRAY_SIZE(sdc3_cfg_data),
+		.sleep_cfg_data = NULL,
 	},
 	{
-		.cfg_data	= sdc4_cfg_data,
-		.size		= ARRAY_SIZE(sdc4_cfg_data),
-		.sleep_cfg_data	= NULL,
+		.cfg_data = sdc4_cfg_data,
+		.size = ARRAY_SIZE(sdc4_cfg_data),
+		.sleep_cfg_data = NULL,
 	},
 };
 
@@ -2065,7 +2142,7 @@ EXPORT_SYMBOL(wifi_detect_change);
 static struct mmc_platform_data msm7x2x_sdc1_data = {
 	.ocr_mask	= MMC_VDD_28_29,
 	.translate_vdd	= msm_sdcc_setup_power,
-	.mmc_bus_width	= MMC_CAP_4_BIT_DATA,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.msmsdcc_fmin	= 144000,
 	.msmsdcc_fmid	= 24576000,
 	.msmsdcc_fmax	= 49152000,
@@ -2077,7 +2154,7 @@ static struct mmc_platform_data msm7x2x_sdc1_data = {
 static struct mmc_platform_data msm7x2x_sdc2_data = {
 	.ocr_mask	= MMC_VDD_28_29,
 	.translate_vdd	= msm_sdcc_setup_power,
-	.mmc_bus_width	= MMC_CAP_4_BIT_DATA,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 #ifdef CONFIG_MMC_MSM_SDIO_SUPPORT
 #ifdef CONFIG_ATH_WIFI
 #ifdef CONFIG_WOW_BY_SDIO_DATA1 
@@ -2099,7 +2176,7 @@ static struct mmc_platform_data msm7x2x_sdc2_data = {
 static struct mmc_platform_data msm7x2x_sdc3_data = {
 	.ocr_mask	= MMC_VDD_28_29,
 	.translate_vdd	= msm_sdcc_setup_power,
-	.mmc_bus_width	= MMC_CAP_4_BIT_DATA,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.msmsdcc_fmin	= 144000,
 	.msmsdcc_fmid	= 24576000,
 	.msmsdcc_fmax	= 49152000,
@@ -2111,7 +2188,7 @@ static struct mmc_platform_data msm7x2x_sdc3_data = {
 static struct mmc_platform_data msm7x2x_sdc4_data = {
 	.ocr_mask	= MMC_VDD_28_29,
 	.translate_vdd	= msm_sdcc_setup_power,
-	.mmc_bus_width	= MMC_CAP_4_BIT_DATA,
+	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.msmsdcc_fmin	= 144000,
 	.msmsdcc_fmid	= 24576000,
 	.msmsdcc_fmax	= 49152000,
@@ -2125,24 +2202,22 @@ static void __init msm7x2x_init_mmc(void)
 		vreg_mmc = vreg_get(NULL, "mmc");
 		if (IS_ERR(vreg_mmc)) {
 			printk(KERN_ERR "%s: vreg get failed (%ld)\n",
-				__func__, PTR_ERR(vreg_mmc));
+			       __func__, PTR_ERR(vreg_mmc));
 			return;
 		}
 	}
 
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
-	if (machine_is_msm7x27_ffa())
-		msm7x2x_sdc1_data.nonremovable = 0;
 	msm_add_sdcc(1, &msm7x2x_sdc1_data);
-
 #endif
 
+//	if (machine_is_msm7x25_surf() || machine_is_msm7x27_surf() ||
+//		machine_is_msm7x27_ffa()) {
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
-		if (machine_is_msm7x27_ffa())
-			msm7x2x_sdc2_data.nonremovable = 1;
 		msm_sdcc_setup_gpio(2, 1);
 		msm_add_sdcc(2, &msm7x2x_sdc2_data);
 #endif
+//	}
 
 	if (machine_is_msm7x25_surf() || machine_is_msm7x27_surf()) {
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
@@ -2156,6 +2231,7 @@ static void __init msm7x2x_init_mmc(void)
 #else
 #define msm7x2x_init_mmc() do {} while (0)
 #endif
+
 
 static struct msm_pm_platform_data msm7x25_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE].latency = 16000,
@@ -2179,7 +2255,8 @@ static struct msm_pm_platform_data msm7x27_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_NO_XO_SHUTDOWN].residency = 20000,
 
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].supported = 1,
-	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].suspend_enabled = 1,
+	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].suspend_enabled
+		= 1,
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].idle_enabled = 1,
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].latency = 2000,
 	[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].residency = 0,
@@ -2211,20 +2288,12 @@ msm_i2c_gpio_config(int iface, int config_type)
 }
 
 static struct msm_i2c_platform_data msm_i2c_pdata = {
-	/*
-	 * Commented by jia.jia, zh.shj
-	 *
-	 * Increase frequency of I2C clock from 100K to 400K (maximum value)
-	 * in order to improve performances of startup and mode switch between
-	 * preview and snapshot for camera ONLY
-	 *
-	 * Set frequency of I2C clock as 100K
-	 */
-	.clk_freq	= 100000,
-	.rmutex		= 0,
-	.pri_clk	= 60,
-	.pri_dat	= 61,
-
+	.clk_freq = 100000,
+	.rmutex  = 0,
+	.pri_clk = 60,
+	.pri_dat = 61,
+//	.aux_clk = 95,
+//	.aux_dat = 96,
 	.msm_i2c_config_gpio = msm_i2c_gpio_config,
 };
 
@@ -2234,6 +2303,10 @@ static void __init msm_device_i2c_init(void)
 		pr_err("failed to request gpio i2c_pri_clk\n");
 	if (gpio_request(61, "i2c_pri_dat"))
 		pr_err("failed to request gpio i2c_pri_dat\n");
+//	if (gpio_request(95, "i2c_sec_clk"))
+//		pr_err("failed to request gpio i2c_sec_clk\n");
+//	if (gpio_request(96, "i2c_sec_dat"))
+//		pr_err("failed to request gpio i2c_sec_dat\n");
 
 	if (cpu_is_msm7x27())
 		msm_i2c_pdata.pm_lat =
@@ -2246,35 +2319,6 @@ static void __init msm_device_i2c_init(void)
 
 	msm_device_i2c.dev.platform_data = &msm_i2c_pdata;
 }
-
-#ifdef CONFIG_ZTE_PLATFORM
-//USB-HML-001 : USB 3.3V control
-#define MSM_GPIO_USB3V3	21
-static unsigned usb_config_power_on = GPIO_CFG(MSM_GPIO_USB3V3, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_2MA);
-static int init_usb3v3(void)
-{
-	int rc;
-	rc = gpio_tlmm_config(usb_config_power_on,GPIO_ENABLE);
-	if (rc) {
-		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",__func__, MSM_GPIO_USB3V3, rc);
-		return -EIO;
-	}
-	rc = gpio_request(MSM_GPIO_USB3V3, "usb");
-	if(!rc)
-	{
-		gpio_direction_output(MSM_GPIO_USB3V3, 1);
-		gpio_set_value(MSM_GPIO_USB3V3, 1);
-		printk(KERN_ERR "gpio_request: %d ok!\n", MSM_GPIO_USB3V3);
-	}
-	else
-	{
-		printk(KERN_ERR "gpio_request: %d failed!\n", MSM_GPIO_USB3V3);
-	}
-	gpio_free(MSM_GPIO_USB3V3);
-	return 0;
-}	
-//USB-HML-001 end
-#endif 
 
 static void usb_mpp_init(void)
 {
@@ -2292,31 +2336,6 @@ static void usb_mpp_init(void)
 }
 
 extern void  __init msm_init_pmic_vibrator(void);
-
-static ssize_t debug_global_read(struct file *file, char __user *buf,
-				    size_t len, loff_t *offset)
-{
-	loff_t pos = *offset;
-	ssize_t count;
-	ssize_t size;
-
-	size = sizeof(smem_global);
-
-	if (pos >= size)
-		return 0;
-
-	count = min(len, (size_t)(size - pos));
-	if (copy_to_user(buf, (char *)global + pos, count))
-		return -EFAULT;
-
-	*offset += count;
-	return count;
-}
-
-static struct file_operations debug_global_file_ops = {
-	.owner = THIS_MODULE,
-	.read = debug_global_read,
-};
 
 static void msm7x27_wlan_init(void)
 {
@@ -2384,15 +2403,11 @@ static void touch_sysfs_init(void)
 
 static void __init msm7x2x_init(void)
 {
-	struct proc_dir_entry *entry;
-
-#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
-	zte_ftm_set_value(g_zte_ftm_flag_fixup);
-#endif
-
 	if (socinfo_init() < 0)
 		BUG();
-#ifdef CONFIG_ARCH_MSM7X27
+#ifdef CONFIG_ARCH_MSM7X25
+	msm_clock_init(msm_clocks_7x25, msm_num_clocks_7x25);
+#elif defined(CONFIG_ARCH_MSM7X27)
 	msm_clock_init(msm_clocks_7x27, msm_num_clocks_7x27);
 #endif
 	platform_add_devices(early_devices, ARRAY_SIZE(early_devices));
@@ -2402,10 +2417,10 @@ static void __init msm7x2x_init(void)
 			&msm_device_uart3.dev, 1);
 #endif
 	if (machine_is_msm7x25_ffa() || machine_is_msm7x27_ffa()) {
-		smc91x_resources[0].start	= 0x98000300;
-		smc91x_resources[0].end		= 0x980003ff;
-		smc91x_resources[1].start	= MSM_GPIO_TO_INT(85);
-		smc91x_resources[1].end		= MSM_GPIO_TO_INT(85);
+		smc91x_resources[0].start = 0x98000300;
+		smc91x_resources[0].end = 0x980003ff;
+		smc91x_resources[1].start = MSM_GPIO_TO_INT(85);
+		smc91x_resources[1].end = MSM_GPIO_TO_INT(85);
 		if (gpio_tlmm_config(GPIO_CFG(85, 0,
 					      GPIO_INPUT,
 					      GPIO_PULL_DOWN,
@@ -2418,34 +2433,31 @@ static void __init msm7x2x_init(void)
 	}
 
 	if (cpu_is_msm7x27())
-		msm7x2x_clock_data.max_axi_khz = 422400;
+		msm7x2x_clock_data.max_axi_khz = 200000;
 
 	msm_acpu_clock_init(&msm7x2x_clock_data);
-#ifdef CONFIG_ZTE_PLATFORM
-	init_usb3v3();//USB-HML-001 enable ldo.
-#endif
 
 #ifdef CONFIG_ARCH_MSM7X27
-	/* This value has been set to 160000 for power savings.
-	 * OEMs may modify the value at their discretion for performance
-	 * The appropriate maximum replacement for 160000 is:
-	 * clk_get_max_axi_khz() */
-	kgsl_pdata.high_axi_3d		= clk_get_max_axi_khz();
+	/* This value has been set to 160000 for power savings. */
+	/* OEMs may modify the value at their discretion for performance */
+	/* The appropriate maximum replacement for 160000 is: */
+	/* clk_get_max_axi_khz() */
+	kgsl_pdata.high_axi_3d = 160000;
 
-	/* 7x27 doesn't allow graphics clocks to be run asynchronously to
-	 * the AXI bus */
-	kgsl_pdata.max_grp2d_freq	= 0;
-	kgsl_pdata.min_grp2d_freq	= 0;
-	kgsl_pdata.set_grp2d_async	= NULL;
-	kgsl_pdata.max_grp3d_freq	= 0;
-	kgsl_pdata.min_grp3d_freq	= 0;
-	kgsl_pdata.set_grp3d_async	= NULL;
-	kgsl_pdata.imem_clk_name	= "imem_clk";
-	kgsl_pdata.grp3d_clk_name	= "grp_clk";
-	kgsl_pdata.grp3d_pclk_name	= "grp_pclk";
-	kgsl_pdata.grp2d0_clk_name	= NULL;
-	kgsl_pdata.idle_timeout_3d	= HZ/5;
-	kgsl_pdata.idle_timeout_2d	= 0;
+	/* 7x27 doesn't allow graphics clocks to be run asynchronously to */
+	/* the AXI bus */
+	kgsl_pdata.max_grp2d_freq = 0;
+	kgsl_pdata.min_grp2d_freq = 0;
+	kgsl_pdata.set_grp2d_async = NULL;
+	kgsl_pdata.max_grp3d_freq = 0;
+	kgsl_pdata.min_grp3d_freq = 0;
+	kgsl_pdata.set_grp3d_async = NULL;
+	kgsl_pdata.imem_clk_name = "imem_clk";
+	kgsl_pdata.grp3d_clk_name = "grp_clk";
+	kgsl_pdata.grp3d_pclk_name = "grp_pclk";
+	kgsl_pdata.grp2d0_clk_name = NULL;
+	kgsl_pdata.idle_timeout_3d = HZ/5;
+	kgsl_pdata.idle_timeout_2d = 0;
 #ifdef CONFIG_KGSL_PER_PROCESS_PAGE_TABLE
 	kgsl_pdata.pt_va_size		= SZ_32M;
 #else
@@ -2477,7 +2489,7 @@ static void __init msm7x2x_init(void)
 			PRE_EMPHASIS_WITH_20_PERCENT;
 		msm_otg_pdata.drv_ampl = HS_DRV_AMPLITUDE_5_PERCENT;
 		msm_otg_pdata.cdr_autoreset = CDR_AUTO_RESET_ENABLE;
-		msm_otg_pdata.phy_reset_sig_inverted = 1;
+		msm_otg_pdata.phy_reset = msm_otg_rpc_phy_reset;
 	}
 	if (machine_is_msm7x27_surf() || machine_is_msm7x27_ffa()) {
 		msm_otg_pdata.pemp_level =
@@ -2486,13 +2498,23 @@ static void __init msm7x2x_init(void)
 		msm_otg_pdata.cdr_autoreset = CDR_AUTO_RESET_DISABLE;
 		msm_otg_pdata.phy_reset_sig_inverted = 1;
 	}
+
+#ifdef CONFIG_USB_GADGET
+	msm_otg_pdata.swfi_latency =
+		msm7x27_pm_data
+		[MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT].latency;
+	msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
+	msm_gadget_pdata.is_phy_status_timer_on = 1;
+#endif
 #endif
 /*ZTE_VIB_SLF_001  2010-03-02,BEGIN*/ 
 	msm_init_pmic_vibrator(); 
 /*ZTE_VIB_SLF_001  2010-03-02 END*/ 
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
-
+#ifdef CONFIG_MSM_CAMERA
+//	config_camera_off_gpios(); /* might not be necessary */
+#endif
 	msm_device_i2c_init();
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 /*ZTE_AUX_FYA_001,@2010-02-06,BEGIN*/
@@ -2500,18 +2522,20 @@ static void __init msm7x2x_init(void)
 	touch_sysfs_init();
 #endif
 	i2c_register_board_info(1, aux_i2c_devices, ARRAY_SIZE(aux_i2c_devices));
-/*ZTE_AUX_FYA_001,@2010-02-06,END*/
-/*ZTE_AUX2_FYA_001,@2010-02-06,BEGIN*/
 	i2c_register_board_info(2, aux2_i2c_devices, ARRAY_SIZE(aux2_i2c_devices));
 /*ZTE_AUX2_FYA_001,@2010-02-06,END*/
 
+#ifdef CONFIG_SURF_FFA_GPIO_KEYPAD
+	if (machine_is_msm7x25_ffa() || machine_is_msm7x27_ffa())
+		platform_device_register(&keypad_device_7k_ffa);
+	else
+		platform_device_register(&keypad_device_surf);
+#endif
 	lcdc_lead_gpio_init();
 	msm_fb_add_devices();
-
 #ifdef CONFIG_USB_EHCI_MSM
 	msm7x2x_init_host();
 #endif
-
 	msm7x2x_init_mmc();
 	bt_power_init();
 
@@ -2525,21 +2549,7 @@ static void __init msm7x2x_init(void)
 	else
 		msm_pm_set_platform_data(msm7x25_pm_data,
 					ARRAY_SIZE(msm7x25_pm_data));
-
 	msm7x27_wlan_init();
-	
-	global = ioremap(SMEM_LOG_GLOBAL_BASE, sizeof(smem_global));
-	if (!global) {
-		printk(KERN_ERR "ioremap failed with SCL_SMEM_LOG_RAM_BASE\n");
-		return;
-	}
-	entry = create_proc_entry("smem_global", S_IFREG | S_IRUGO, NULL);
-	if (!entry) {
-		printk(KERN_ERR "smem_global: failed to create proc entry\n");
-		return;
-	}
-	entry->proc_fops = &debug_global_file_ops;
-	entry->size = sizeof(smem_global);
 }
 
 static unsigned pmem_kernel_ebi1_size = PMEM_KERNEL_EBI1_SIZE;
@@ -2574,13 +2584,6 @@ static void __init msm_msm7x2x_allocate_memory_regions(void)
 {
 	void *addr;
 	unsigned long size;
-
-#if defined (CONFIG_ZTE_PLATFORM) && defined (CONFIG_F3_LOG)
-	unsigned int len;
-	smem_global *global_tmp = (smem_global *)(MSM_RAM_LOG_BASE + PAGE_SIZE) ;
-
-	len = global_tmp->f3log;
-#endif
 
 	size = pmem_mdp_size;
 	if (size) {
@@ -2622,23 +2625,6 @@ static void __init msm_msm7x2x_allocate_memory_regions(void)
 			" ebi1 pmem arena\n", size, addr, __pa(addr));
 	}
 
-#if defined (CONFIG_ZTE_PLATFORM) && defined (CONFIG_F3_LOG)
-	pr_info("length = %d ++ \n", len);
-
-	if (len > 12)
-		len = 12;
-	else
-		len = len/2*2;
-
-	pr_info("length = %d -- \n", len);
-	size = len;
-
-	if (size)
-		reserve_bootmem(0x08D00000, size*0x100000, BOOTMEM_DEFAULT);
-
-	addr = phys_to_virt(0x08D00000);
-	pr_info("allocating %lu M at %p (%lx physical) for F3\n",size, addr, __pa(addr));
-#endif
 }
 
 static void __init msm7x2x_map_io(void)
@@ -2647,56 +2633,70 @@ static void __init msm7x2x_map_io(void)
 	msm_msm7x2x_allocate_memory_regions();
 
 #ifdef CONFIG_CACHE_L2X0
-	l2x0_init(MSM_L2CC_BASE, 0x00068012, 0xfe000000);
+//	if (machine_is_msm7x27_surf() || machine_is_msm7x27_ffa()) {
+		/* 7x27 has 256KB L2 cache:
+			64Kb/Way and 4-Way Associativity;
+			R/W latency: 3 cycles;
+			evmon/parity/share disabled. */
+		l2x0_init(MSM_L2CC_BASE, 0x00068012, 0xfe000000);
+//	}
 #endif
 }
 
-//ruanmeisi
-#ifdef CONFIG_ZTE_PLATFORM
-#define ATAG_ZTEFTM 0x5d53cd73
-static int  parse_tag_zteftm(const struct tag *tags)
-{
-	int flag = 0, find = 0;
-	struct tag *t = (struct tag *)tags;
-
-	for (; t->hdr.size; t = tag_next(t)) {
-		if (t->hdr.tag == ATAG_ZTEFTM) {
-			printk(KERN_DEBUG "find the zte ftm tag\n");
-			find = 1;
-			break;
-		}
-	}
-
-	if (find)
-		flag = t->u.revision.rev;
-	printk(KERN_INFO "[ZYF@FTM]parse_tag_zteftm: zte FTM %s !\n",
-			flag?"enable":"disable");
-	return flag;
-}
-
-static void __init zte_fixup(struct machine_desc *desc, struct tag *tags,
-			     char **cmdline, struct meminfo *mi)
-{
-	g_zte_ftm_flag_fixup = parse_tag_zteftm((const struct tag *)tags);
-}
-
-int get_ftm_from_tag(void)
-{
-	return g_zte_ftm_flag_fixup;
-}
-EXPORT_SYMBOL(get_ftm_from_tag);
+MACHINE_START(MSM7X27_SURF, "QCT MSM7x27 SURF")
+#ifdef CONFIG_MSM_DEBUG_UART
+	.phys_io        = MSM_DEBUG_UART_PHYS,
+	.io_pg_offst    = ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,
 #endif
-//end
+	.boot_params	= PHYS_OFFSET + 0x100,
+	.map_io		= msm7x2x_map_io,
+	.init_irq	= msm7x2x_init_irq,
+	.init_machine	= msm7x2x_init,
+	.timer		= &msm_timer,
+MACHINE_END
+
+MACHINE_START(MSM7X27_FFA, "QCT MSM7x27 FFA")
+#ifdef CONFIG_MSM_DEBUG_UART
+	.phys_io        = MSM_DEBUG_UART_PHYS,
+	.io_pg_offst    = ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,
+#endif
+	.boot_params	= PHYS_OFFSET + 0x100,
+	.map_io		= msm7x2x_map_io,
+	.init_irq	= msm7x2x_init_irq,
+	.init_machine	= msm7x2x_init,
+	.timer		= &msm_timer,
+MACHINE_END
+
+MACHINE_START(MSM7X25_SURF, "QCT MSM7x25 SURF")
+#ifdef CONFIG_MSM_DEBUG_UART
+	.phys_io        = MSM_DEBUG_UART_PHYS,
+	.io_pg_offst    = ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,
+#endif
+	.boot_params	= PHYS_OFFSET + 0x100,
+	.map_io		= msm7x2x_map_io,
+	.init_irq	= msm7x2x_init_irq,
+	.init_machine	= msm7x2x_init,
+	.timer		= &msm_timer,
+MACHINE_END
+
+MACHINE_START(MSM7X25_FFA, "QCT MSM7x25 FFA")
+#ifdef CONFIG_MSM_DEBUG_UART
+	.phys_io        = MSM_DEBUG_UART_PHYS,
+	.io_pg_offst    = ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,
+#endif
+	.boot_params	= PHYS_OFFSET + 0x100,
+	.map_io		= msm7x2x_map_io,
+	.init_irq	= msm7x2x_init_irq,
+	.init_machine	= msm7x2x_init,
+	.timer		= &msm_timer,
+MACHINE_END
 
 MACHINE_START(MOONCAKE, "mooncake ZTE handset")
 #ifdef CONFIG_MSM_DEBUG_UART
-	.phys_io	= MSM_DEBUG_UART_PHYS,
-	.io_pg_offst	= ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,
+	.phys_io        = MSM_DEBUG_UART_PHYS,
+	.io_pg_offst    = ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,
 #endif
 	.boot_params	= PHYS_OFFSET + 0x100,
-#ifdef CONFIG_ZTE_PLATFORM
-	.fixup		= zte_fixup,
-#endif
 	.map_io		= msm7x2x_map_io,
 	.init_irq	= msm7x2x_init_irq,
 	.init_machine	= msm7x2x_init,

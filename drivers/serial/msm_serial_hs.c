@@ -59,13 +59,9 @@
 
 #include "msm_serial_hs_hwreg.h"
 
-/*
-//ZTE_SERIAL_LOG_WXW, 20101215, begin, delete the froyo serial log mask
 static int hs_serial_debug_mask = 1;
 module_param_named(debug_mask, hs_serial_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
-//ZTE_SERIAL_LOG_WXW, 20101215, end, delete the froyo serial log mask
-*/
 
 enum flush_reason {
 	FLUSH_NONE,

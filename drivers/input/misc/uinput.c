@@ -37,7 +37,6 @@
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
 #include <linux/uinput.h>
-#include <linux/input/mt.h>
 #include "../input-compat.h"
 
 static int uinput_dev_event(struct input_dev *dev, unsigned int type, unsigned int code, int value)
