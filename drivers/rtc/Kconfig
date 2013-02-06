@@ -58,12 +58,6 @@ config RTC_DEBUG
 	help
 	  Say yes here to enable debugging support in the RTC framework
 	  and individual RTC drivers.
-	  
-config ZTE_FIX_ALARM_SYNC
-	bool "zte code: fix time sync from modem"
-	depends on RTC_CLASS = y
-	help
-	  Say yes here to enable this fix in the RTC framework.
 
 comment "RTC interfaces"
 

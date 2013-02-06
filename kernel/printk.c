@@ -15,10 +15,6 @@
  * Rewrote bits to get rid of console_lock
  *	01Mar01 Andrew Morton
  */
- 
-/*20100726 liuyijian print proc info ZTE_LYJ_PRINTK_001*/
-/*20100910 yintianci prevent console-log from suspend to output log immediately. ZTE_LOG_YINTIANCI_20100910*/
-
 
 #include <linux/kernel.h>
 #include <linux/mm.h>
@@ -41,11 +37,8 @@
 #include <linux/ratelimit.h>
 #include <linux/kmsg_dump.h>
 #include <linux/syslog.h>
-#include <linux/rtc.h>
+
 #include <asm/uaccess.h>
-/*20100726 ZTE_LYJ_PRINTK_001*/
-static int printk_proc_info = 1;
-module_param_named(printk_proc_info, printk_proc_info, int, S_IRUGO | S_IWUSR);
 
 /*
  * for_each_console() allows you to iterate on each console
@@ -851,47 +844,19 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 				/* Follow the token with the time */
 				char tbuf[50], *tp;
 				unsigned tlen;
-#if 0
 				unsigned long long t;
 				unsigned long nanosec_rem;
-#endif
-				/* caozy: use wall time instead of jiffies. */
-				struct timespec ts;
-				struct rtc_time tm;
-				
-				ts = current_kernel_time();
-				rtc_time_to_tm(ts.tv_sec, &tm);
-				tlen = sprintf(tbuf, "[%02d-%02d %02d:%02d:%02d.%06d] ",
-					tm.tm_mon + 1, tm.tm_mday,
-					tm.tm_hour, tm.tm_min, tm.tm_sec, (int)(ts.tv_nsec / NSEC_PER_USEC));
-#if 0
+
 				t = cpu_clock(printk_cpu);
 				nanosec_rem = do_div(t, 1000000000);
 				tlen = sprintf(tbuf, "[%5lu.%06lu] ",
 						(unsigned long) t,
 						nanosec_rem / 1000);
-#endif
+
 				for (tp = tbuf; tp < tbuf + tlen; tp++)
 					emit_log_char(*tp);
 				printed_len += tlen;
 			}
-/*20100726 ZTE_LYJ_PRINTK_001 start */
-			if (printk_proc_info) {
-				if (!in_interrupt()){
-				    /* Follow the token with the time */
-				    char proc_info_buf[50], *tp;
-				    unsigned info_len;
-
-				    info_len = sprintf(proc_info_buf, "[%d: %s]",
-						current->pid,
-						current->comm);
-
-				    for (tp = proc_info_buf; tp < proc_info_buf + info_len; tp++)
-					    emit_log_char(*tp);
-				    printed_len += info_len;
-				}
-			}
-/*20100726 ZTE_LYJ_PRINTK_001 end */
 
 			if (!*p)
 				break;
@@ -1054,7 +1019,7 @@ int update_console_cmdline(char *name, int idx, char *name_new, int idx_new, cha
 	return -1;
 }
 
-int console_suspend_enabled = 0;//yintianci change from 1 to 0. ZTE_LOG_YINTIANCI_20100910
+int console_suspend_enabled = 1;
 EXPORT_SYMBOL(console_suspend_enabled);
 
 static int __init console_suspend_disable(char *str)

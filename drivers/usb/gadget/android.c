@@ -187,7 +187,6 @@ int support_assoc_desc(void)
 	return current_pid() == PRODUCT_ID_RNDIS ? 0 : 1;
 }
 
-
 #define MAX_STR_LEN		64
 /* string IDs are assigned dynamically */
 
@@ -1047,8 +1046,6 @@ static void bind_functions(struct android_dev *dev)
 	}
 }
 
-
-
 static int android_bind_config(struct usb_configuration *c)
 {
 	struct android_dev *dev = _android_dev;
@@ -1059,11 +1056,12 @@ static int android_bind_config(struct usb_configuration *c)
 	/* bind our functions if they have all registered */
 	if (g_android_usb.registered_function_count >= dev->num_functions)
 		bind_functions(dev);
+
 	return 0;
 }
 
 static int android_setup_config(struct usb_configuration *c,
-				const struct usb_ctrlrequest *ctrl);
+		const struct usb_ctrlrequest *ctrl);
 
 static struct usb_configuration android_config_driver = {
 	.label		= "android",
@@ -1074,7 +1072,7 @@ static struct usb_configuration android_config_driver = {
 };
 
 static int android_setup_config(struct usb_configuration *c,
-				const struct usb_ctrlrequest *ctrl)
+		const struct usb_ctrlrequest *ctrl)
 {
 	int i;
 	int ret = -EOPNOTSUPP;
@@ -1165,10 +1163,10 @@ static int android_bind(struct usb_composite_dev *cdev)
 
 	if (!usb_gadget_set_selfpowered(gadget))
 		android_config_driver.bmAttributes |= USB_CONFIG_ATT_SELFPOWER;
-	
+
 	if (gadget->ops->wakeup)
 		android_config_driver.bmAttributes |= USB_CONFIG_ATT_WAKEUP;
-	
+
 	/* register our configuration */
 	#ifdef CONFIG_USB_ANDROID_RNDIS
 	/* set up network link layer */
@@ -1185,7 +1183,7 @@ static int android_bind(struct usb_composite_dev *cdev)
 		printk(KERN_ERR "usb_add_config failed\n");
 		return ret;
 	}
-	
+
 	gcnum = usb_gadget_controller_number(gadget);
 	if (gcnum >= 0)
 		device_desc.bcdDevice = cpu_to_le16(0x0200 + gcnum);
@@ -1198,7 +1196,7 @@ static int android_bind(struct usb_composite_dev *cdev)
 		 * can need hardware-specific attention though.
 		 */
 		pr_warning("%s: controller '%s' not recognized\n",
-			   longname, gadget->name);
+			longname, gadget->name);
 		device_desc.bcdDevice = __constant_cpu_to_le16(0x9999);
 	}
 
@@ -1222,10 +1220,8 @@ static int android_bind(struct usb_composite_dev *cdev)
                 device_desc.bDeviceProtocol      = 0;
         }
 
-#if 0	
-	//product_id = get_product_id(dev);
-	//device_desc.idProduct = __constant_cpu_to_le16(product_id);
-#endif	
+//	product_id = get_product_id(dev);
+//	device_desc.idProduct = __constant_cpu_to_le16(product_id);
 	cdev->desc.idProduct = device_desc.idProduct;
 
 	return 0;
@@ -1430,7 +1426,7 @@ static int android_debugfs_open(struct inode *inode, struct file *file)
 }
 
 static ssize_t android_debugfs_serialno_write(struct file *file, const char
-					      __user *buf,	size_t count, loff_t *ppos)
+				__user *buf,	size_t count, loff_t *ppos)
 {
 	char str_buf[MAX_STR_LEN];
 
@@ -1463,9 +1459,9 @@ static int android_debugfs_init(struct android_dev *dev)
 	if (!android_debug_root)
 		return -ENOENT;
 
-	android_debug_serialno = debugfs_create_file("serial_number", 0220,
-						     android_debug_root, dev,
-						     &android_fops);
+	android_debug_serialno = debugfs_create_file("serial_number", 0222,
+						android_debug_root, dev,
+						&android_fops);
 	if (!android_debug_serialno) {
 		debugfs_remove(android_debug_root);
 		android_debug_root = NULL;
@@ -1476,8 +1472,8 @@ static int android_debugfs_init(struct android_dev *dev)
 
 static void android_debugfs_cleanup(void)
 {
-	debugfs_remove(android_debug_serialno);
-	debugfs_remove(android_debug_root);
+       debugfs_remove(android_debug_serialno);
+       debugfs_remove(android_debug_root);
 }
 #endif
 static int __init android_probe(struct platform_device *pdev)
@@ -1505,7 +1501,6 @@ static int __init android_probe(struct platform_device *pdev)
 		dev->functions = pdata->functions;
 		dev->num_functions = pdata->num_functions;
 		config_ftm_from_tag();
-
 
 		if (pdata->vendor_id)
 			device_desc.idVendor =
@@ -1604,8 +1599,6 @@ static struct platform_driver android_platform_driver = {
 	.driver = { .name = "android_usb", .pm = &andr_dev_pm_ops},
 };
 
-
-
 static int adb_enable_open(struct inode *ip, struct file *fp)
 {
 	if (atomic_inc_return(&adb_enable_excl) != 1) {
@@ -1651,7 +1644,6 @@ static struct miscdevice adb_enable_device = {
 	.fops = &adb_enable_fops,
 };
 
-
 static int __init init(void)
 {
 	struct android_dev *dev;
@@ -1661,8 +1653,7 @@ static int __init init(void)
 	ret = misc_register(&adb_enable_device);
 	if (ret)
 		return ret;
-	
-	
+
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev)
 		return -ENOMEM;
@@ -1692,22 +1683,19 @@ static void __exit cleanup(void)
 	unregister_android_all_function();
 	misc_deregister(&adb_enable_device);
 
-	#ifdef CONFIG_USB_ANDROID_DIAG
+#ifdef CONFIG_USB_ANDROID_DIAG
 	diag_deinit();
-	#endif
-        #ifdef CONFIG_USB_ANDROID_ADB
+#endif
+#ifdef CONFIG_USB_ANDROID_ADB
 	adb_deinit();
-	#endif
-	#ifdef CONFIG_USB_ANDROID_RNDIS
+#endif
+#ifdef CONFIG_USB_ANDROID_RNDIS
 	android_rndis_deinit();
 #endif
 }
 module_exit(cleanup);
 
 //ruanmeisi_20100712 add for switch usb mode
-
-
-
 static int create_usb_work_queue(void)
 {
 	struct usb_ex_work *p = &global_usbwork;
@@ -1735,8 +1723,6 @@ static int create_usb_work_queue(void)
 		       WAKE_LOCK_SUSPEND, "usb_switch_wlock");
 	return 0;
 }
-
-
 
 static int destroy_usb_work_queue(void)
 {

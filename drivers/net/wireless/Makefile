@@ -2,7 +2,6 @@
 # Makefile for the Linux Wireless network device drivers.
 #
 
-
 obj-$(CONFIG_IPW2100) += ipw2x00/
 obj-$(CONFIG_IPW2200) += ipw2x00/
 
@@ -55,5 +54,5 @@ obj-$(CONFIG_WL12XX)	+= wl12xx/
 obj-$(CONFIG_IWM)	+= iwmc3200wifi/
 
 obj-$(CONFIG_BCM4329)	+= bcm4329/
-obj-$(CONFIG_DHD)			+= bcm4319/
+
 obj-$(CONFIG_LIBRA_SDIOIF)	+= libra/

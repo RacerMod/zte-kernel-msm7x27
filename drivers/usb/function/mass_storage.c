@@ -2716,10 +2716,6 @@ static void /* __init_or_exit */ fsg_unbind(void *_ctxt)
 		raise_exception(fsg, FSG_STATE_EXIT);
 		wait_for_completion(&fsg->thread_notifier);
 
-		/* The cleanup routine waits for this completion also */
-		//ruanmeisi
-		//complete(&fsg->thread_notifier);
-		
 	}
 
 	/* Free the data buffers */
@@ -2781,10 +2777,9 @@ static void fsg_bind(void *_ctxt)
 		curlun->dev.release = lun_release;
 		curlun->dev.parent = &fsg->pdev->dev;
 		dev_set_drvdata(&curlun->dev, fsg);
-		/*snprintf(curlun->dev.bus_id, BUS_ID_SIZE,
-				"lun%d", i);
-*/
-dev_set_name(&curlun->dev,"lun%d",     i);
+/*		snprintf(curlun->dev.bus_id, BUS_ID_SIZE,
+				"lun%d", i); */
+		dev_set_name(&curlun->dev,"lun%d", i);
 
 		rc = device_register(&curlun->dev);
 		if (rc != 0) {

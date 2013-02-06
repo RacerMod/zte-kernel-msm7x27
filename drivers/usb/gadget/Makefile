@@ -70,11 +70,11 @@ obj-$(CONFIG_USB_QCOM_MAEMO)    += qcom_maemo.o
 obj-$(CONFIG_USB_ANDROID_ACM)	+= f_acm.o u_serial.o
 #obj-$(CONFIG_USB_F_SERIAL)	+= f_serial.o u_serial.o
 obj-$(CONFIG_USB_ANDROID_ADB)	+= f_adb.o
-# obj-$(CONFIG_USB_ANDROID_MASS_STORAGE)	+= f_mass_storage.o
+#obj-$(CONFIG_USB_ANDROID_MASS_STORAGE)	+= f_mass_storage.o
 obj-$(CONFIG_USB_ANDROID_MTP)	+= f_mtp.o
 #obj-$(CONFIG_USB_ANDROID_RNDIS)	+= f_rndis.o u_ether.o
 
 # MSM specific
-# obj-$(CONFIG_USB_ANDROID_DIAG)	+= f_diag.o
+#obj-$(CONFIG_USB_ANDROID_DIAG)	+= f_diag.o
 obj-$(CONFIG_USB_ANDROID_RMNET)	+= f_rmnet.o
 

@@ -16,16 +16,11 @@
  *
  */
 
-/*
-*  2010-09-03   wxw        add the msm_pm_swfi patch from Qualcomm 53303006. flag:ZTE_MSM_PM_SWFI_PATCH_WXW_001
-   20100927    liuyijian  ENTRY(msm_arch_idle)QUALCOMM ZTE_MSM_PM_SWFI_PATCH_LYJ_001
-*/ 
-
 #include <linux/linkage.h>
 #include <asm/assembler.h>
 
 .extern write_to_strongly_ordered_memory
-//ZTE_MSM_PM_SWFI_PATCH_LYJ_001 START
+
 ENTRY(msm_arch_idle)
 	mrs	r2, cpsr		/* save the CPSR state */
 	cpsid   iaf			/* explictly disable I,A and F */
@@ -58,7 +53,7 @@ ENTRY(msm_arch_idle)
 
 	msr	cpsr_c, r2		/* restore the CPSR state */
 	mov     pc, lr
-//ZTE_MSM_PM_SWFI_PATCH_LYJ_001 END
+
 ENTRY(msm_pm_collapse)
 	ldr     r0, =saved_state
 	stmia   r0!, {r4-r14}

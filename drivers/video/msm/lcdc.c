@@ -84,7 +84,7 @@ static int lcdc_off(struct platform_device *pdev)
 	clk_disable(pixel_mdp_clk);
 	clk_disable(pixel_lcdc_clk);
 #ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA   //ZTE_LCD_LHT_20100810_001
-	if(LcdPanleID!=42)	
+	if(LcdPanleID!=42)
 	{
 		if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
 			lcdc_pdata->lcdc_power_save(0);
@@ -92,7 +92,7 @@ static int lcdc_off(struct platform_device *pdev)
 #elif defined(CONFIG_FB_MSM_LCDC_SKATE_WVGA)||defined(CONFIG_FB_MSM_LCDC_SKATE_TEST_SAMPLE_WVGA)
 #else
 	if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
-			lcdc_pdata->lcdc_power_save(0);
+		lcdc_pdata->lcdc_power_save(0);
 #endif
 	///ZTE_LCD_LUYA_20100308_001
 /*	if (lcdc_pdata && lcdc_pdata->lcdc_gpio_config)
@@ -141,7 +141,6 @@ static int lcdc_on(struct platform_device *pdev)
 		clk_enable(mfd->ebi1_clk);
 	}
 #endif
-				  
 	mfd = platform_get_drvdata(pdev);
 
 	mfd->fbi->var.pixclock = clk_round_rate(pixel_mdp_clk,
@@ -272,7 +271,6 @@ static int lcdc_probe(struct platform_device *pdev)
 	fbi = mfd->fbi;
 	fbi->var.pixclock = clk_round_rate(pixel_mdp_clk,
 					mfd->panel_info.clk_rate);
-
 	fbi->var.left_margin = mfd->panel_info.lcdc.h_back_porch;
 	fbi->var.right_margin = mfd->panel_info.lcdc.h_front_porch;
 	fbi->var.upper_margin = mfd->panel_info.lcdc.v_back_porch;

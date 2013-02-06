@@ -16,7 +16,6 @@
  *
  */
 
-
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
@@ -1093,6 +1092,7 @@ void msm_otg_set_vbus_state(int online)
 	struct msm_otg *dev = the_msm_otg;
 	printk(KERN_ERR"%s %d online = %d, in_lpm %d\n",
 	       __FUNCTION__, __LINE__, online, atomic_read(&dev->in_lpm));
+
 	if (!atomic_read(&dev->in_lpm) || !online)
 		return;
 
@@ -2273,7 +2273,7 @@ static int otg_debugfs_init(struct msm_otg *dev)
 	if (!otg_debug_root)
 		return -ENOENT;
 
-	otg_debug_mode = debugfs_create_file("mode", 0220,
+	otg_debug_mode = debugfs_create_file("mode", 0222,
 						otg_debug_root, dev,
 						&otgfs_fops);
 	if (!otg_debug_mode) {
@@ -2326,7 +2326,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	if (dev->pdata->rpc_connect) {
 		ret = dev->pdata->rpc_connect(1);
-		pr_info("%s: rpc_connect(%d)\n", __func__, ret);
+		pr_debug("%s: rpc_connect(%d)\n", __func__, ret);
 		if (ret) {
 			pr_err("%s: rpc connect failed\n", __func__);
 			ret = -ENODEV;
@@ -2358,6 +2358,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		clk_set_rate(dev->pclk_src, INT_MAX);
 		msm_otg_vote_for_pclk_source(dev, 1);
 	}
+
 
 	if (!dev->pdata->pclk_is_hw_gated) {
 		dev->hs_pclk = clk_get(&pdev->dev, "usb_hs_pclk");
@@ -2521,7 +2522,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	ret = request_irq(dev->irq, msm_otg_irq, IRQF_SHARED,
 					"msm_otg", dev);
 	if (ret) {
-		pr_info("%s: request irq failed\n", __func__);
+		pr_err("%s: request irq failed\n", __func__);
 		goto free_ldo_enable;
 	}
 

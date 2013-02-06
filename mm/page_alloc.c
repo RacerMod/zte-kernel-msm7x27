@@ -1959,17 +1959,6 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 	return alloc_flags;
 }
 
-void dump_mem(void)//tcd
-{
-        char modprobe_path[KMOD_PATH_LEN] = "/system/bin/dumpmem.sh";
-        char *argv[] = { modprobe_path,NULL };
-        static char *envp[] = { "HOME=/",
-                           "TERM=linux",
-                           "PATH=/sbin:/usr/sbin:/bin:/usr/bin:/system/bin",
-                           NULL };
-        call_usermodehelper(modprobe_path, argv, envp, 1);
-}
-
 static inline struct page *
 __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	struct zonelist *zonelist, enum zone_type high_zoneidx,
@@ -2101,11 +2090,10 @@ rebalance:
 
 nopage:
 	if (!(gfp_mask & __GFP_NOWARN) && printk_ratelimit()) {
-		printk(KERN_WARNING "%s: zhengchao page allocation failure."
+		printk(KERN_WARNING "%s: page allocation failure."
 			" order:%d, mode:0x%x\n",
 			p->comm, order, gfp_mask);
 		dump_stack();
-		dump_mem();//tcd
 		show_mem();
 	}
 	return page;

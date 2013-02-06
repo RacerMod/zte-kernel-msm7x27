@@ -254,18 +254,17 @@ void tcp_select_initial_window(int __space, __u32 mss,
 		else if (*rcv_wnd > init_cwnd * mss)
 			*rcv_wnd = init_cwnd * mss;
 	}
+
 //ZTE_WANGCHENG_TCP_20110325 add
 #ifdef CONFIG_ZTE_PLATFORM
-    if(sysctl_tcp_force_windows_size_64k) 
-
+    if(sysctl_tcp_force_windows_size_64k)
 	{
-	   *rcv_wscale = 1;
-	   *rcv_wnd = 65535U;
-
+		*rcv_wscale = 1;
+		*rcv_wnd = 65535U;
 	}
 #endif
 //ZTE_WANGCHENG_TCP_20110325 end
-	
+
 	/* Set the clamp no higher than max representable value */
 	(*window_clamp) = min(65535U << (*rcv_wscale), *window_clamp);
 }

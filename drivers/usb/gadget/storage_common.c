@@ -67,9 +67,6 @@
 
 /*-------------------------------------------------------------------------*/
 
-//#define DEBUG
-//#define VERBOSE_DEBUG
-//#define DUMP_MSGS
 
 #ifndef DEBUG
 #undef VERBOSE_DEBUG
@@ -244,7 +241,6 @@ struct interrupt_data {
 #define SC_SET_CD_SPEED	           0xbb	
 // xingbeilei_20110801 start_stop usb debug
 #define SC_START_STOP_USB_DEBUG  0x86
-
 
 /* SCSI Sense Key/Additional Sense Code/ASC Qualifier values */
 #define SS_NO_SENSE				0

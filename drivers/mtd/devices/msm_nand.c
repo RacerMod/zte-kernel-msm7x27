@@ -394,8 +394,7 @@ struct flash_identification {
 	uint32_t pagesize;
 	uint32_t blksize;
 	uint32_t oobsize;
-}supported_flash;
-
+} supported_flash;
 
 uint16_t flash_onfi_crc_check(uint8_t *buffer, uint16_t count)
 {
@@ -6979,7 +6978,7 @@ no_dual_nand_ctlr_support:
 
 	setup_mtd_device(pdev, info);
 	dev_set_drvdata(&pdev->dev, info);
-	init_memory_proc();		////BOOT_JIANGFENG_20100611_01
+	init_memory_proc(); //BOOT_JIANGFENG_20100611_01
 
 	return 0;
 

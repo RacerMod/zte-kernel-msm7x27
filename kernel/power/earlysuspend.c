@@ -27,33 +27,15 @@ enum {
 	DEBUG_USER_STATE = 1U << 0,
 	DEBUG_SUSPEND = 1U << 2,
 };
-static int debug_mask = DEBUG_USER_STATE | DEBUG_SUSPEND;
+static int debug_mask = DEBUG_USER_STATE;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
-#define FEATURE_ZTE_EARLYSUSPEND_DEBUG	//LHX_PM_20110303_01 add for earlysuspend debug to find which modem consume huge current during earlysuspend
-#ifdef FEATURE_ZTE_EARLYSUSPEND_DEBUG
-static int debug_earlysuspend_level = 500;
-module_param_named(earlysuspend_level, debug_earlysuspend_level, int, S_IRUGO | S_IWUSR | S_IWGRP);
-#endif
-
-//ruanmeisi
-
-void enqueue_sync_work(signed long timeout);
-void abort_sync_wait(void);
-//end
-	
 static DEFINE_MUTEX(early_suspend_lock);
 static LIST_HEAD(early_suspend_handlers);
 static void early_suspend(struct work_struct *work);
 static void late_resume(struct work_struct *work);
 static DECLARE_WORK(early_suspend_work, early_suspend);
 static DECLARE_WORK(late_resume_work, late_resume);
-//ruanmeisi
-int resume_work_pending(void)
-{
-	return work_pending(&late_resume_work);
-}
-//end
 static DEFINE_SPINLOCK(state_lock);
 enum {
 	SUSPEND_REQUESTED = 0x1,
@@ -88,8 +70,6 @@ void unregister_early_suspend(struct early_suspend *handler)
 }
 EXPORT_SYMBOL(unregister_early_suspend);
 
-extern void zte_update_lateresume_2_earlysuspend_time(bool resume_or_earlysuspend);	//LHX_PM_20110411_01 resume_or_earlysuspend? lateresume : earlysuspend
-
 static void early_suspend(struct work_struct *work)
 {
 	struct early_suspend *pos;
@@ -115,35 +95,14 @@ static void early_suspend(struct work_struct *work)
 		pr_info("early_suspend: call handlers\n");
 	list_for_each_entry(pos, &early_suspend_handlers, link) {
 		if (pos->suspend != NULL)
-		{
-			#ifdef FEATURE_ZTE_EARLYSUSPEND_DEBUG
-			if(debug_earlysuspend_level <= pos->level)
-			{
-				pr_info("NO early_suspend: handlers level = %d \n",pos->level);
-				break;
-			}
-			#endif
-			if (debug_mask & DEBUG_SUSPEND)
-                        	pr_info("early_suspend: handlers level=%d\n", pos->level);
 			pos->suspend(pos);
-		}
 	}
 	mutex_unlock(&early_suspend_lock);
 
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("early_suspend: sync\n");
 
-	//ruanmeisi
-	//sys_sync();
-
-	enqueue_sync_work(10 * HZ);
-	//end
-
-	//ZTE_PM_ZHENGCHAO_20100402_01
-	if (debug_mask & DEBUG_SUSPEND)
-		pr_info("early_suspend: sync end\n");
-	zte_update_lateresume_2_earlysuspend_time(false);//LHX_PM_20110411_01,update earlysuspend time
-
+	sys_sync();
 abort:
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED_AND_SUSPENDED)
@@ -173,17 +132,10 @@ static void late_resume(struct work_struct *work)
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: call handlers\n");
 	list_for_each_entry_reverse(pos, &early_suspend_handlers, link)
-	{
 		if (pos->resume != NULL)
-		{
-			if (debug_mask & DEBUG_SUSPEND)
-                                pr_info("late_resume: handlers level=%d\n", pos->level);
 			pos->resume(pos);
-		}
-	}
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: done\n");
-	zte_update_lateresume_2_earlysuspend_time(true);//LHX_PM_20110411_01 update resume time
 abort:
 	mutex_unlock(&early_suspend_lock);
 }
@@ -192,7 +144,6 @@ void request_suspend_state(suspend_state_t new_state)
 {
 	unsigned long irqflags;
 	int old_sleep;
-	int wq_status = -1;
 
 	spin_lock_irqsave(&state_lock, irqflags);
 	old_sleep = state & SUSPEND_REQUESTED;
@@ -211,20 +162,12 @@ void request_suspend_state(suspend_state_t new_state)
 	}
 	if (!old_sleep && new_state != PM_SUSPEND_ON) {
 		state |= SUSPEND_REQUESTED;
-		wq_status = queue_work(suspend_work_queue, &early_suspend_work);
+		queue_work(suspend_work_queue, &early_suspend_work);
 	} else if (old_sleep && new_state == PM_SUSPEND_ON) {
 		state &= ~SUSPEND_REQUESTED;
 		wake_lock(&main_wake_lock);
-		wq_status = queue_work(suspend_work_queue, &late_resume_work);
-		//ruanmeisi
-	    abort_sync_wait();
-	    //end
-	} else {
-	      //ruanmeisi
-	      abort_sync_wait();
-	      //end
+		queue_work(suspend_work_queue, &late_resume_work);
 	}
-	pr_info("[early_suspend] wq status=%d \n",wq_status);
 	requested_suspend_state = new_state;
 	spin_unlock_irqrestore(&state_lock, irqflags);
 }

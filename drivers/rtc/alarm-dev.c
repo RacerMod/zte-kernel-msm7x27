@@ -57,31 +57,6 @@ static uint32_t wait_pending;
 
 static struct alarm alarms[ANDROID_ALARM_TYPE_COUNT];
 
-#ifdef CONFIG_ZTE_FIX_ALARM_SYNC
-#define FROM_ANDROID_APP   0
-#define FROM_MODEM_NETWORK 1    //time sync from network,not start by app
-static int set_rtc_flag=FROM_MODEM_NETWORK; //first let all the time sync can notify alarmmanagerserver in app
-/*this is a fix by zhengchao@20101008
- *this function is called by Hctosys.c when sync time from modem
- */
-void fix_sync_alarm(void)
-{
-	if (set_rtc_flag==FROM_MODEM_NETWORK)
-	{
-		unsigned long flags;
-
-		spin_lock_irqsave(&alarm_slock, flags);
-		alarm_pending |= ANDROID_ALARM_TIME_CHANGE_MASK;
-		wake_up(&alarm_wait_queue);
-		spin_unlock_irqrestore(&alarm_slock, flags);
-		printk("[alarm] time sync from modem,fix_sync_alarm\n");
-	}
-
-	set_rtc_flag=FROM_MODEM_NETWORK;
-
-}
-
-#endif
 static long alarm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int rv = 0;
@@ -177,12 +152,6 @@ from_old_alarm_set:
 			rv = -EFAULT;
 			goto err1;
 		}
-	#ifdef CONFIG_ZTE_FIX_ALARM_SYNC
-		printk("[alarm] time sync from APP\n");
-
-		//Setting this flag means sync operation comes from APP 
-		set_rtc_flag = FROM_ANDROID_APP;
-	#endif
 		rv = alarm_set_rtc(new_rtc_time);
 		spin_lock_irqsave(&alarm_slock, flags);
 		alarm_pending |= ANDROID_ALARM_TIME_CHANGE_MASK;

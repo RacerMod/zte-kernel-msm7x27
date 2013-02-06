@@ -152,6 +152,7 @@ static struct workqueue_struct *usb_work;
 #ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001 
 static void usb_chg_stop(struct work_struct *w);
 #endif
+
 #define USB_STATE_IDLE    0
 #define USB_STATE_ONLINE  1
 #define USB_STATE_OFFLINE 2
@@ -1585,7 +1586,6 @@ static void flush_all_endpoints(struct usb_info *ui)
 
 static void usb_disable_pullup_nodisable_irq(struct usb_info *ui)
 {
-
 	writel(readl(USB_USBINTR) & ~(STS_URI | STS_SLI | STS_UI | STS_PCI),
 			USB_USBINTR);
 
@@ -1595,7 +1595,6 @@ static void usb_disable_pullup_nodisable_irq(struct usb_info *ui)
 	if (!is_phy_external() && !is_phy_45nm())
 		ulpi_write(ui, 0x48, 0x04);
 }
-
 
 #define HW_DELAY_FOR_LPM msecs_to_jiffies(1000)
 #define DELAY_FOR_USB_VBUS_STABILIZE msecs_to_jiffies(500)
@@ -1659,9 +1658,10 @@ static irqreturn_t usb_interrupt(int irq, void *data)
 		pr_info("hsusb reset interrupt\n");
 		ui->usb_state = USB_STATE_DEFAULT;
 		ui->configured = 0;
-		#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001
 		schedule_work(&ui->chg_stop);
 #endif
+
 		writel(readl(USB_ENDPTSETUPSTAT), USB_ENDPTSETUPSTAT);
 		writel(readl(USB_ENDPTCOMPLETE), USB_ENDPTCOMPLETE);
 		writel(0xffffffff, USB_ENDPTFLUSH);
@@ -1683,6 +1683,7 @@ static irqreturn_t usb_interrupt(int irq, void *data)
 	if (n & STS_SLI) {
 		pr_info("hsusb suspend interrupt\n");
 		ui->usb_state = USB_STATE_SUSPENDED;
+
 #ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001
 		/* stop usb charging */
 		schedule_work(&ui->chg_stop);
@@ -1768,11 +1769,10 @@ static void usb_prepare(struct usb_info *ui)
 
 #ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001 
 	INIT_WORK(&ui->chg_stop, usb_chg_stop);
-       INIT_DELAYED_WORK(&ui->chg_legacy_det, usb_chg_legacy_detect);
+	INIT_DELAYED_WORK(&ui->chg_legacy_det, usb_chg_legacy_detect);
 #endif
 	INIT_WORK(&ui->li.wakeup_phy, usb_lpm_wakeup_phy);
 	INIT_DELAYED_WORK(&ui->work, usb_do_work);
-	
 }
 
 static int usb_is_online(struct usb_info *ui)
@@ -2068,7 +2068,7 @@ void usb_start(struct usb_info *ui)
 		queue_delayed_work(usb_work, &ui->work, 0);
 	} else {
 		/*Initialize pm app RPC */
-		#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11
 		ret = msm_pm_app_rpc_init();
 		if (ret) {
 			pr_err("%s: pm_app_rpc connect failed\n", __func__);
@@ -2100,12 +2100,12 @@ out:
 		ui->active = 1;
 		ui->flags |= (USB_FLAG_START | USB_FLAG_RESET);
 		queue_delayed_work(usb_work, &ui->work, 0);
-		#else
+#else
 		printk("hml usb start !\n");
 		ui->active = 1;
 		ui->flags |= (USB_FLAG_START | USB_FLAG_RESET);
 		queue_delayed_work(usb_work, &ui->work, 0);
-		#endif
+#endif
 	}
 
 }
@@ -2137,6 +2137,7 @@ static void usb_try_to_bind(void)
 	//ruanmeisi_20100513
 	use_default_pid = 0;
 	//end
+
 	if (!ui || ui->bound || !ui->pdev || !ui->composition)
 		return;
 
@@ -2200,9 +2201,9 @@ int usb_function_register(struct usb_function *driver)
 	fi->func->ep0_out = &ui->ep0out;
 	fi->func->ep0_in = &ui->ep0in;
 	pr_info("%s: name = '%s',  map = %d\n", __func__, driver->name, index);
-    
-       if(BIND_IN_KERNEL == get_bind_mode())//HML_USB_005
-	     usb_try_to_bind();
+
+	if(BIND_IN_KERNEL == get_bind_mode()) //HML_USB_005
+		usb_try_to_bind();
 fail:
 	mutex_unlock(&usb_function_list_lock);
 	return ret;
@@ -2300,7 +2301,7 @@ static void usb_switch_composition(unsigned short pid)
 	int i;
 	unsigned long flags;
 
-       pr_info("%s: usb_switch_composition start pid =%d \n", __func__,pid);
+	pr_info("%s: usb_switch_composition start pid =%d \n", __func__,pid);
 	if (!ui->active)
 		return;
 	if (!usb_validate_product_id(pid))
@@ -2321,11 +2322,13 @@ static void usb_switch_composition(unsigned short pid)
 				disable_irq(ui->gpio_irq[0]);
 				disable_irq(ui->gpio_irq[1]);
 			}
+
 #ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11
 			if (ui->usb_state == USB_STATE_NOTATTACHED
 						&& ui->vbus_sn_notif)
 				msm_pm_app_enable_usb_ldo(1);
 #endif
+
 			usb_lpm_exit(ui);
 			if (cancel_work_sync(&ui->li.wakeup_phy))
 				usb_lpm_wakeup_phy(NULL);
@@ -2493,10 +2496,10 @@ static void usb_do_work(struct work_struct *w)
 			if ((flags & USB_FLAG_START) ||
 					(flags & USB_FLAG_RESET)) {
 				disable_irq(ui->irq);
-				#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
 				if (ui->vbus_sn_notif)
 					msm_pm_app_enable_usb_ldo(1);
-				#endif
+#endif
 				usb_clk_enable(ui);
 				usb_vreg_enable(ui);
 				usb_vbus_online(ui);
@@ -2509,11 +2512,11 @@ static void usb_do_work(struct work_struct *w)
 					msm_hsusb_suspend_locks_acquire(ui, 1);
 					ui->state = USB_STATE_ONLINE;
 					usb_enable_pullup(ui);
-					#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001 
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001 
 					schedule_delayed_work(
 							&ui->chg_legacy_det,
 							USB_CHG_DET_DELAY);
-					#endif
+#endif
 					pr_info("hsusb: IDLE -> ONLINE\n");
 				} else {
 					ui->usb_state = USB_STATE_NOTATTACHED;
@@ -2522,10 +2525,10 @@ static void usb_do_work(struct work_struct *w)
 					msleep(500);
 					usb_lpm_enter(ui);
 					pr_info("hsusb: IDLE -> OFFLINE\n");
-					#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
 					if (ui->vbus_sn_notif)
 						msm_pm_app_enable_usb_ldo(0);
-					#endif
+#endif
 				}
 				enable_irq(ui->irq);
 				break;
@@ -2558,18 +2561,19 @@ static void usb_do_work(struct work_struct *w)
 					msm_chg_usb_i_is_not_available();
 					msm_chg_usb_charger_disconnected();
 				}
-	#endif	
+#endif
+
 				/* reset usb core and usb phy */
 				disable_irq(ui->irq);
 				if (ui->in_lpm)
 					usb_lpm_exit(ui);
 				usb_vbus_offline(ui);
 				usb_lpm_enter(ui);
-				#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
 				if ((ui->vbus_sn_notif) &&
 				(ui->usb_state == USB_STATE_NOTATTACHED))
 					msm_pm_app_enable_usb_ldo(0);
-				#endif
+#endif
 				ui->state = USB_STATE_OFFLINE;
 				enable_irq(ui->irq);
 				switch_set_state(&ui->sdev, 0);
@@ -2584,12 +2588,12 @@ static void usb_do_work(struct work_struct *w)
 			}
 			if ((flags & USB_FLAG_RESUME) ||
 					(flags & USB_FLAG_CONFIGURE)) {
-				#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001 
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001 
 				int maxpower = usb_get_max_power(ui);
 
 				if (maxpower > 0)
 					msm_chg_usb_i_is_available(maxpower);
-				#endif
+#endif
 
 				if (flags & USB_FLAG_CONFIGURE)
 					switch_set_state(&ui->sdev, 1);
@@ -2617,11 +2621,11 @@ static void usb_do_work(struct work_struct *w)
 					goto reset;
 				}
 				usb_enable_pullup(ui);
-				#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001 
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001 
 				schedule_delayed_work(
 						&ui->chg_legacy_det,
 						USB_CHG_DET_DELAY);
-				#endif
+#endif
 				pr_info("hsusb: OFFLINE -> ONLINE\n");
 				enable_irq(ui->irq);
 				break;
@@ -2647,9 +2651,9 @@ void msm_hsusb_set_vbus_state(int online)
 	struct usb_info *ui = the_usb_info;
 
 	if (ui && online) {
-		#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
 		msm_pm_app_enable_usb_ldo(1);
-		#endif
+#endif
 		usb_lpm_exit(ui);
 		/* Turn on PHY comparators */
 		if (!(ulpi_read(ui, 0x30) & 0x01))
@@ -2803,6 +2807,7 @@ static void usb_chg_stop(struct work_struct *w)
 		msm_chg_usb_i_is_not_available();
 }
 #endif
+
 static void usb_vbus_online(struct usb_info *ui)
 {
 	if (ui->in_lpm) {
@@ -2901,12 +2906,12 @@ void usb_function_reenumerate(void)
 	struct usb_info *ui = the_usb_info;
 
 	/* disable and re-enable the D+ pullup */
-	printk("hml: hsusb disable pullup\n");
+	pr_info("hsusb: disable pullup\n");
 	usb_disable_pullup(ui);
 
 	msleep(10);
 
-	printk("hml:hsusb enable pullup\n");
+	pr_info("hsusb: enable pullup\n");
 	usb_enable_pullup(ui);
 }
 
@@ -2975,7 +2980,8 @@ static ssize_t debug_write_reset(struct file *file, const char __user *buf,
 {
 	struct usb_info *ui = file->private_data;
 	unsigned long flags;
-       printk("hml: debug_write_reset start  \n");
+	printk("hml: debug_write_reset start  \n");
+
 	spin_lock_irqsave(&ui->lock, flags);
 	ui->flags |= USB_FLAG_RESET;
 	queue_delayed_work(usb_work, &ui->work, 0);
@@ -3277,17 +3283,14 @@ static ssize_t msm_hsusb_store_compswitch(struct device *dev,
 	if (!strict_strtoul(buf, 16, &pid)) {
 		pr_info("%s: Requested New Product id = %lx\n", __func__, pid);
 		usb_switch_composition((unsigned short)pid);
-	       //HML_USB_004  restore pid in nv77
+		//HML_USB_004  restore pid in nv77
 		temp_pid = (int)pid;
 		printk("HML: restore pid =0x%x %d\n",temp_pid, ARRAY_SIZE(zte_usb_pid));
 		for(i = 0; i < ARRAY_SIZE(zte_usb_pid); i++){
 			if(temp_pid == zte_usb_pid[i])
-					break;
+				break;
 		}
-		/*if(NV_WRITE_SUCCESS == msm_hsusb_get_set_usb_conf_nv_value(NV_BACK_LIGHT_I,i,NV_WRITE))
-			printk("HML: usb config restore successful\n");*/
-	} 
-	else
+	} else
 		pr_info("%s: strict_strtoul conversion failed\n", __func__);
 
 	return size;
@@ -3360,7 +3363,7 @@ static DEVICE_ATTR(debug_enable, 0664,
 static DEVICE_ATTR(default_pid, 0664,
 		msm_hsusb_show_default_pid, msm_hsusb_store_default_pid);
 static DEVICE_ATTR(pidnv, 0664,
-		   msm_hsusb_show_pidnv, msm_hsusb_set_pidnv);
+		msm_hsusb_show_pidnv, msm_hsusb_set_pidnv);
 
 static struct attribute *msm_hsusb_attrs[] = {
 	&dev_attr_composition.attr,
@@ -3407,8 +3410,8 @@ static struct attribute *msm_hsusb_func_attrs[] = {
 	&dev_attr_modem.attr,
 	&dev_attr_nmea.attr,
 	&dev_attr_mass_storage.attr,
-	//&dev_attr_ethernet.attr,
-	//&dev_attr_rmnet.attr,
+//	&dev_attr_ethernet.attr,
+//	&dev_attr_rmnet.attr,
 	NULL,
 };
 
@@ -3787,9 +3790,9 @@ static int __init usb_module_init(void)
 	/* rpc connect for phy_reset */
 	msm_hsusb_rpc_connect();
 	/* rpc connect for charging */
-	#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-001
 	msm_chg_rpc_connect();
-	#endif
+#endif
 
 	return platform_driver_register(&usb_driver);
 }
@@ -3841,11 +3844,11 @@ static void usb_exit(void)
 	usb_debugfs_uninit();
 	platform_driver_unregister(&usb_driver);
 	msm_hsusb_rpc_close();
-	#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
+#ifdef CONFIG_HSU_CHARGER_TYPE_DETECT_ON_ARM11 //USB-HML-01
 	msm_chg_rpc_close();
 	msm_pm_app_unregister_vbus_sn(&msm_hsusb_set_vbus_state);
 	msm_pm_app_rpc_deinit();
-	#endif
+#endif
 }
 
 static void __exit usb_module_exit(void)

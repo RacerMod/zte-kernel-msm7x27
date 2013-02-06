@@ -193,20 +193,17 @@ static void bluesleep_sleep_work(struct work_struct *work)
 			return;
 		}
 	} else {
-	//modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 begin
-	#ifndef CONFIG_BT_MSM_BCM
-		 bluesleep_sleep_wakeup();
-	#else
-	   if (test_bit(BT_ASLEEP, &flags)) 
-	   {
-			 bluesleep_sleep_wakeup();
-		 }
-		 else
-		 {
-		   mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
-	   }
-	#endif
-	//modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 end
+//modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 begin
+#ifndef CONFIG_BT_MSM_BCM
+		bluesleep_sleep_wakeup();
+#else
+		if (test_bit(BT_ASLEEP, &flags)) {
+			bluesleep_sleep_wakeup();
+		} else {
+			mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		}
+#endif
+//modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 end
 	}
 }
 
@@ -244,12 +241,13 @@ static void bluesleep_outgoing_data(void)
 
 	/* if the tx side is sleeping... */
 	if (gpio_get_value(bsi->ext_wake)) {
+
 //modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 begin
 #ifndef CONFIG_BT_MSM_BCM
 		BT_DBG("tx was sleeping");
 		bluesleep_sleep_wakeup();
 #else
-    gpio_set_value(bsi->ext_wake, 0);
+		gpio_set_value(bsi->ext_wake, 0);
 		bluesleep_sleep_wakeup();
 #endif
 //modify sleep control for broadcom bluetooth chip ZTE_BT_QXX_20101025 end
@@ -574,16 +572,14 @@ static int bluesleep_write_proc_proto(struct file *file, const char *buffer,
 }
 
 //add for display BTInfo on Engineering Mode ZTE_BT_QXX_20101203 begin
-
 static int msm_btinfo_read_proc(
         char *page, char **start, off_t off, int count, int *eof, void *data)
 {
 	int len = 0;
  
-  printk("[qxx]:msm_btinfo_read_proc===========\n");
+	printk("[qxx]:msm_btinfo_read_proc===========\n");
 	len = sprintf(page, "%s\n","BTS4025");
 	return len;
-
 }
 
 static int msm_btinfo_write_proc(struct file *file, const char __user *buffer,
@@ -591,8 +587,8 @@ static int msm_btinfo_write_proc(struct file *file, const char __user *buffer,
 {
 	return 1;
 }
-
 //add for display BTInfo on Engineering Mode ZTE_BT_QXX_20101203 end
+
 static int __init bluesleep_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -747,21 +743,21 @@ static int __init bluesleep_init(void)
 	}
 
 	flags = 0; /* clear all status bits */
-	//add for display BTInfo on Engineering Mode ZTE_BT_QXX_20101203 begin
-	
-	ent = create_proc_entry("msm_btinfo", 0, NULL);
-  if (ent) {
-     ent->read_proc = msm_btinfo_read_proc;
-     ent->write_proc = msm_btinfo_write_proc;
-     ent->data = NULL;
-  }
-  else
-  {
-  	BT_ERR("[qxx]Unable to create /proc/msm_btinfo");
-  	remove_proc_entry("msm_btinfo", 0);
-  }
 
-  //add for display BTInfo on Engineering Mode ZTE_BT_QXX_20101203 end
+//add for display BTInfo on Engineering Mode ZTE_BT_QXX_20101203 begin	
+	ent = create_proc_entry("msm_btinfo", 0, NULL);
+	if (ent) {
+		ent->read_proc = msm_btinfo_read_proc;
+		ent->write_proc = msm_btinfo_write_proc;
+		ent->data = NULL;
+	}
+	else
+	{
+		BT_ERR("[qxx]Unable to create /proc/msm_btinfo");
+		remove_proc_entry("msm_btinfo", 0);
+	}
+//add for display BTInfo on Engineering Mode ZTE_BT_QXX_20101203 end
+
 	/* Initialize spinlock. */
 	spin_lock_init(&rw_lock);
 

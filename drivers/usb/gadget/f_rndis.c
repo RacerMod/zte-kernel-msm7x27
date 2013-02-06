@@ -36,7 +36,6 @@
 #include "rndis.h"
 
 
-
 /*
  * This function is an RNDIS Ethernet port -- a Microsoft protocol that's
  * been promoted instead of the standard CDC Ethernet.  The published RNDIS
@@ -750,8 +749,7 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 	rndis->notify_req->complete = rndis_response_complete;
 
 	/* copy descriptors, and track endpoint copies */
-	//ruanmeisi_20100809
-	
+//ruanmeisi_20100809
 	f->descriptors = usb_copy_descriptors(get_eth_fs_function());
 	if (!f->descriptors)
 		goto fail;
@@ -763,6 +761,7 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 	rndis->fs.notify = usb_find_endpoint(get_eth_fs_function(),
 			f->descriptors, &fs_notify_desc);
 //end
+
 	/* support all relevant hardware speeds... we expect that when
 	 * hardware is dual speed, all bulk-capable endpoints work at
 	 * both speeds
@@ -776,7 +775,7 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 				fs_notify_desc.bEndpointAddress;
 
 		/* copy descriptors, and track endpoint copies */
-		//ruanmeisi_20100809
+//ruanmeisi_20100809
 		//f->hs_descriptors = usb_copy_descriptors(eth_hs_function);
 		f->hs_descriptors = usb_copy_descriptors(get_eth_hs_function());
 
@@ -790,7 +789,7 @@ rndis_bind(struct usb_configuration *c, struct usb_function *f)
 		rndis->hs.notify = usb_find_endpoint(get_eth_hs_function(),
 				f->hs_descriptors, &hs_notify_desc);
 	}
-	//end
+//end
 
 	rndis->port.open = rndis_open;
 	rndis->port.close = rndis_close;
@@ -1035,4 +1034,5 @@ static int __init init(void)
 }
 module_init(init);
 #endif
+
 #endif /* CONFIG_USB_ANDROID_RNDIS */

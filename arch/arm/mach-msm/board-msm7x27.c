@@ -14,21 +14,14 @@
  *
  */
 
-/* ========================================================================================
-when         who        what, where, why                             comment tag
---------     ----       -----------------------------                ----------------------
-2010-08-16   huangyj add mooncake board boot config         ZTE_BOOT_HUANGYJ_20100816_01
-2010-07-09   qxx        bluetooth gpio and voltage modify            ZTE_BT_QXX_20100709
-2010-08-04   yym        add f3 log support                           ZTE_F3LOG_YYM_20100804
-==========================================================================================*/
 #include <linux/kernel.h>
+#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/bootmem.h>
-#include <linux/usb/mass_storage_function.h>
 #include <linux/power_supply.h>
 
 
@@ -45,8 +38,8 @@ when         who        what, where, why                             comment tag
 #include <asm/mach/mmc.h>
 #include <mach/vreg.h>
 #include <mach/mpp.h>
-#include <mach/gpio.h>
 #include <mach/board.h>
+#include <mach/pmic.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_rpcrouter.h>
 #include <mach/msm_hsusb.h>
@@ -56,7 +49,7 @@ when         who        what, where, why                             comment tag
 #include <mach/memory.h>
 #include <mach/msm_battery.h>
 #include <mach/rpc_server_handset.h>
-
+#include <mach/msm_tsif.h>
 
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
@@ -68,6 +61,7 @@ when         who        what, where, why                             comment tag
 #include <mach/camera.h>
 #include <linux/proc_fs.h>
 #include <mach/zte_memlog.h>
+
 #include "devices.h"
 #include "socinfo.h"
 #include "clock.h"
@@ -83,9 +77,11 @@ when         who        what, where, why                             comment tag
 #ifdef CONFIG_ZTE_PLATFORM
 #include "msm_usb_config.h" //USB-HML-001
 #endif
+
 /*ZTE_GSENSOR_FYA_001,@2010-02-06,BEGIN*/
 #include <linux/lis302dl.h>
 /*ZTE_GSENSOR_FYA_001,@2010-02-06,END*/
+
 #ifdef CONFIG_ARCH_MSM7X25
 #define MSM_PMEM_MDP_SIZE	0xb21000
 #define MSM_PMEM_ADSP_SIZE	0x97b000

@@ -737,7 +737,7 @@ int fserial_nmea_bind_config(struct usb_configuration *c)
 {
 	return gser_bind_config(c, 1);
 }
- 
+
 static struct android_usb_function nmea_function = {
 	.name = "nmea",
 	.bind_config = fserial_nmea_bind_config,
@@ -775,7 +775,6 @@ static struct android_usb_function modem_function = {
 	.bind_config = fserial_modem_bind_config,
 	.unbind_config = fserial_modem_unbind_config,
 };
-
 
 static int __init init(void)
 {

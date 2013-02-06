@@ -256,6 +256,7 @@ config MSM_CAMERA_AF_BAM
 	bool "BAM Module"
 	help
 	  This driver supports BAM AF module for 5M Bayer sensor
+
 endchoice
 
 config MT9P012_KM
@@ -291,6 +292,7 @@ config SENSOR_INFO
 	default y
 	---help---
 	  Get sensor id and name through EM (Engineering Mode)
+
 config MSM_CAMERA_FLASH
 	bool "Qualcomm MSM camera flash support"
 	depends on MSM_CAMERA && !ARCH_MSM8X60
@@ -328,4 +330,4 @@ config CAMERA_N880
 	depends on MSM_CAMERA && !ARCH_MSM8X60
 	default n
 	---help---
-	  it add motor power supply  different from other balde project 
+	 Adds motor power supply, different from other blade project

@@ -122,7 +122,7 @@ struct gs_port {
 };
 
 /* increase N_PORTS if you need more */
-#define N_PORTS	 5   //4/*ZTE_USB_WZY_101021*/
+#define N_PORTS		5 //4 - ZTE_USB_WZY_101021
 static struct portmaster {
 	struct mutex	lock;			/* protect open/close */
 	struct gs_port	*port;

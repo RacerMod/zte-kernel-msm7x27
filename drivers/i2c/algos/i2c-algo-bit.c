@@ -21,12 +21,6 @@
 /* With some changes from Frodo Looijaard <frodol@dds.nl>, Kyösti Mälkki
    <kmalkki@cc.hut.fi> and Jean Delvare <khali@linux-fr.org> */
 
-/* ------------------------------------------------------------------------------------ 
-2011-07-06   wangtao    add gpio  state (inpu/output) setting               ZTE_CAM_20110706
-                          for 727d40 aux-i2c   
-
-------------------------------------------------------------------------- ----------- */
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/delay.h>
@@ -35,7 +29,6 @@
 #include <linux/sched.h>
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
-#include <mach/gpio.h>
 
 
 /* ----- global defines ----------------------------------------------- */
@@ -51,9 +44,6 @@
 	do {} while (0)
 #endif /* DEBUG */
 
-#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
-#define GPIO_SDA_PIN 93
-#endif
 /* ----- global variables ---------------------------------------------	*/
 
 static int bit_test;	/* see if the line-setting functions work	*/
@@ -192,12 +182,7 @@ static int i2c_outb(struct i2c_adapter *i2c_adap, unsigned char c)
 		 */
 		scllo(adap);
 	}
-#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
-	gpio_tlmm_config(GPIO_CFG(GPIO_SDA_PIN, 0, GPIO_INPUT,
-					GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE);
-#else
-sdahi(adap);
-#endif
+	sdahi(adap);
 	if (sclhi(adap) < 0) { /* timeout */
 		bit_dbg(1, &i2c_adap->dev, "i2c_outb: 0x%02x, "
 			"timeout at ack\n", (int)c);
@@ -212,10 +197,6 @@ sdahi(adap);
 		ack ? "A" : "NA");
 
 	scllo(adap);
-#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
-	gpio_tlmm_config(GPIO_CFG(GPIO_SDA_PIN, 0, GPIO_OUTPUT,
-					GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE);
-#endif
 	return ack;
 	/* assert: scl is low (sda undef) */
 }
@@ -230,12 +211,7 @@ static int i2c_inb(struct i2c_adapter *i2c_adap)
 	struct i2c_algo_bit_data *adap = i2c_adap->algo_data;
 
 	/* assert: scl is low */
-#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
-	gpio_tlmm_config(GPIO_CFG(GPIO_SDA_PIN, 0, GPIO_INPUT,
-					GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE);
-#else
 	sdahi(adap);
-#endif	
 	for (i = 0; i < 8; i++) {
 		if (sclhi(adap) < 0) { /* timeout */
 			bit_dbg(1, &i2c_adap->dev, "i2c_inb: timeout at bit "
@@ -249,12 +225,6 @@ static int i2c_inb(struct i2c_adapter *i2c_adap)
 		udelay(i == 7 ? adap->udelay / 2 : adap->udelay);
 	}
 	/* assert: scl is low */
-#if defined(CONFIG_MACH_SAILBOAT) && (defined(CONFIG_OVM7690) ||defined(CONFIG_MT9V113))
-	sdahi(adap);
-	
-	gpio_tlmm_config(GPIO_CFG(GPIO_SDA_PIN, 0, GPIO_OUTPUT,
-					GPIO_NO_PULL, GPIO_2MA), GPIO_ENABLE); //for testing
-#endif
 	return indata;
 }
 

@@ -16,11 +16,6 @@
  * GNU General Public License for more details.
  *
  */
-/* ========================================================================================
-when                who               what, where, why                comment tag
---------         ----       -----------------------------             --------------------------
-2010-08-04    yangyiming            add f3 log merge                        ZTE_F3LOG_YYM_0804
-==========================================================================================*/
 
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -51,16 +46,9 @@ static void msm_map_io(struct map_desc *io_desc, int size)
 	int i;
 
 	BUG_ON(!size);
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < size; i++)
 		if (io_desc[i].virtual == (unsigned long)MSM_SHARED_RAM_BASE)
 			io_desc[i].pfn = __phys_to_pfn(msm_shared_ram_phys);
-#if defined(CONFIG_ZTE_PLATFORM) && defined(CONFIG_F3_LOG)
-/* ZTE_F3LOG_YYM_0804 begin */
-		if (io_desc[i].virtual == (unsigned long)MSM_RAM_LOG_BASE)
-			io_desc[i].pfn = __phys_to_pfn(msm_shared_ram_phys+0x100000);
-/* ZTE_F3LOG_YYM_0804 end */
-#endif
-    }
 
 	iotable_init(io_desc, size);
 }
@@ -93,15 +81,6 @@ static struct map_desc msm_io_desc[] __initdata = {
 		.length =   MSM_SHARED_RAM_SIZE,
 		.type =     MT_DEVICE,
 	},
-#if defined(CONFIG_ZTE_PLATFORM) && defined(CONFIG_F3_LOG)
-/* ZTE_F3LOG_YYM_0804 begin */
-	{
-		.virtual =  (unsigned long) MSM_RAM_LOG_BASE,
-		.length =   MSM_RAM_LOG_SIZE,
-		.type =     MT_DEVICE,
-	},
-/* ZTE_F3LOG_YYM_0804 end */
-#endif
 };
 
 void __init msm_map_common_io(void)

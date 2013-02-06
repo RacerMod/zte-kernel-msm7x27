@@ -516,7 +516,7 @@ static struct ctl_table ipv4_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec
 	},
-	//ZTE_WANGCHENG_TCP_20110325 start
+//ZTE_WANGCHENG_TCP_20110325 start
 #ifdef CONFIG_ZTE_PLATFORM
 	{
 		.procname	= "tcp_force_windows_size_64k",
@@ -526,7 +526,7 @@ static struct ctl_table ipv4_table[] = {
 		.proc_handler	= proc_dointvec
 	},
 #endif
-  //ZTE_WANGCHENG_TCP_20110325 end
+//ZTE_WANGCHENG_TCP_20110325 end
 #ifdef CONFIG_NET_DMA
 	{
 		.procname	= "tcp_dma_copybreak",

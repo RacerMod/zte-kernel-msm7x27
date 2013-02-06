@@ -330,13 +330,4 @@ config MOUSE_QCITP
 	  smartbook platforms.
 
 
-
-
-# zhanglei add JOGBALL_KEY
-config JOGBALL_KEY
-  tristate "JOGBALL UP/DOWN/LEFT/RIGHT"
-  help
-	  Say Y here if you have a jogball attached.
-	  To compile this driver as a module, choose M here
-
 endif

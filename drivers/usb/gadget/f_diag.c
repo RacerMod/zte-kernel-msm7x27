@@ -736,10 +736,6 @@ static int __init usb_diag_init(void)
 	return platform_driver_probe(&usb_diag_driver, diag_probe);
 }
 module_init(usb_diag_init);
-
-#else
-
-
 #endif
 
 MODULE_LICENSE("GPL v2");

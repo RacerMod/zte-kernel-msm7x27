@@ -40,6 +40,7 @@ config SYS_SUPPORTS_APM_EMULATION
 
 config HAVE_SCHED_CLOCK
 	bool
+
 config GENERIC_GPIO
 	bool
 
