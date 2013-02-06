@@ -289,16 +289,3 @@ static struct android_usb_product usb_products[] = {
 		.adb_functions	= usb_function_modem_ms_adb,
 	},	
 };
-
-static struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id	= 0x19d2,		//zte vid
-	.product_id	= 0,		//0x1350 default all interface not include RNDIS
-	.version	= 0x0100,
-	.product_name		= "ZTE HSUSB Device",
-	.manufacturer_name	= "ZTE Incorporated",
-	.num_products = ARRAY_SIZE(usb_products),
-	.products = usb_products,					//product list
-	.num_functions = ARRAY_SIZE(usb_functions_all),
-	.functions = usb_functions_all,				//function bit wise
-	.serial_number = "1234567890ABCDEF",
-};

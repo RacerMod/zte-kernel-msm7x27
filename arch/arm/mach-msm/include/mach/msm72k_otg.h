@@ -128,8 +128,8 @@ struct msm_otg {
 	struct clk		*hs_pclk;
 	struct clk		*hs_cclk;
 
-	/* pclk source for voting */
-	struct clk		*pclk_src;
+	/* hsusb pclk on 8660 is sourced from daytona fabric clock */
+	struct clk		*dfab_clk;
 
 	/* clk regime has created dummy clock id for phy so
 	 * that generic clk_reset api can be used to reset phy

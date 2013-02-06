@@ -34,11 +34,6 @@
  * changes.
  *
  */
-/* ========================================================================================
-when                who               what, where, why                comment tag
---------         ----       -----------------------------             --------------------------
-2010-08-04    yangyiming     	    add f3 log merge 			    ZTE_F3LOG_YYM_0804
-==========================================================================================*/
 
 #define MSM_VIC_BASE          IOMEM(0xFA000000)
 #define MSM_VIC_PHYS          0xC0000000
@@ -75,13 +70,6 @@ when                who               what, where, why                comment ta
 #define MSM_SHARED_RAM_BASE   IOMEM(0xFA100000)
 #define MSM_SHARED_RAM_SIZE   SZ_1M
 
-#if defined(CONFIG_ZTE_PLATFORM) && defined(CONFIG_F3_LOG)
-/* ZTE_F3LOG_YYM_0804 begin */
-#define MSM_RAM_LOG_BASE      IOMEM(0xFA200000)
-#define MSM_RAM_LOG_SIZE   	  SZ_1M
-/* ZTE_F3LOG_YYM_0804 end */
-#endif
-
 #define MSM_UART1_PHYS        0xA9A00000
 #define MSM_UART1_SIZE        SZ_4K
 
@@ -110,8 +98,5 @@ when                who               what, where, why                comment ta
 #define MSM_AD5_BASE          IOMEM(0xFA300000)
 #define MSM_AD5_PHYS          0xAC000000
 #define MSM_AD5_SIZE          (SZ_1M*13)
-
-#define MSM_SMEM_RAM_PHYS     0x00200000
-#define MSM_SMEM_RAM_SIZE     SZ_1M
 
 #endif

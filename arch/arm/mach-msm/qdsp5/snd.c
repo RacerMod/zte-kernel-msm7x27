@@ -42,7 +42,6 @@ when       who       what, where, why                        comment tag
 #include <mach/msm_rpcrouter.h>
 #include <mach/debug_mm.h>
 /* ZTE_Audio_CJ_100302, chenjun, 2010-3-2, start */
-// 2010-3-2:this file merged from 4735
 /* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, start */
 #include <linux/switch.h>
 /* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, end */
@@ -259,14 +258,8 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		MM_INFO("snd_set_device %d %d %d\n", dev.device,
 				dev.ear_mute, dev.mic_mute);
-		
+
 		/* ZTE_FM_YXS_20100831 start */
-		#if 0
-		rc = msm_rpc_call(snd->ept,
-			SND_SET_DEVICE_PROC,
-			&dmsg, sizeof(dmsg), 5 * HZ);
-		
-		#else
 		if(SND_DEVICE_FM_STEREO_HEADSET_ZTE == dev.device)
 		{
 			MM_ERR("[CHYL] set the headset for fm\n");
@@ -280,14 +273,13 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			SND_SET_DEVICE_PROC,
 			&dmsg, sizeof(dmsg), 5 * HZ);
         }
-		#endif
 		/* ZTE_FM_YXS_20100831 end */
 /* ZTE_Audio_DEBUG_CJ_091217, chenjun, 2009-12-17, start */
 /* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, start */
-              if (dev.device != 28)
-              {
-		    keep_snd_dev_info[SND_DEV] = dev.device;
-              }
+		if (dev.device != 28)
+		{
+			keep_snd_dev_info[SND_DEV] = dev.device;
+		}
 		keep_snd_dev_info[EAR_MUTE] = dev.ear_mute;
 		keep_snd_dev_info[MIC_MUTE] = dev.mic_mute;
 /* ZTE_Audio-DEBUG_CJ_1, chenjun, 2009-11-6, end */
@@ -402,10 +394,6 @@ static long snd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	}
 	mutex_unlock(&snd->lock);
-
-/* ZTE_Audio_DEBUG_CJ_100125, chenjun, 2010-1-25, start */
-		MM_INFO("chenjun:rc = %d\n", rc);
-/* ZTE_Audio_DEBUG_CJ_100125, chenjun, 2010-1-25, end */
 
 	return rc;
 }

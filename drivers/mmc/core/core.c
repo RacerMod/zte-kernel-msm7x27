@@ -38,7 +38,7 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
-#if defined(CONFIG_ATH_WIFI) || defined(CONFIG_BCM_WIFI)
+#if defined(CONFIG_ATH_WIFI)
 #define	ATH_WIFI_SDCC_INDEX		1
 #endif
 
@@ -52,6 +52,22 @@ static struct wake_lock mmc_delayed_work_wake_lock;
  */
 int use_spi_crc = 1;
 module_param(use_spi_crc, bool, 0);
+
+/*
+ * We normally treat cards as removed during suspend if they are not
+ * known to be on a non-removable bus, to avoid the risk of writing
+ * back data to a different card after resume.  Allow this to be
+ * overridden if necessary.
+ */
+#ifdef CONFIG_MMC_UNSAFE_RESUME
+int mmc_assume_removable;
+#else
+int mmc_assume_removable = 1;
+#endif
+module_param_named(removable, mmc_assume_removable, bool, 0644);
+MODULE_PARM_DESC(
+	removable,
+	"MMC/SD cards are removable and may be removed during suspend");
 
 /*
  * Internal function. Schedule delayed work in the MMC work queue.
@@ -228,15 +244,8 @@ void mmc_wait_for_req(struct mmc_host *host, struct mmc_request *mrq)
 	mrq->done = mmc_wait_done;
 
 	mmc_start_request(host, mrq);
-//#ifdef CONFIG_BCM_WIFI
-//    if(!wait_for_completion_timeout(&complete, 5*HZ))
-//	{
-//		printk("shaohua mmc 5 dec timeout \n");
-//		mrq->cmd->error = -1;
-//	}
-//#else
+
 	wait_for_completion(&complete);
-//#endif
 }
 
 EXPORT_SYMBOL(mmc_wait_for_req);
@@ -902,11 +911,7 @@ void mmc_set_timing(struct mmc_host *host, unsigned int timing)
  * If a host does all the power sequencing itself, ignore the
  * initial MMC_POWER_UP stage.
  */
-#ifdef CONFIG_BCM_WIFI
-void mmc_power_up(struct mmc_host *host)
-#else
 static void mmc_power_up(struct mmc_host *host)
-#endif
 {
 	int bit;
 
@@ -947,12 +952,7 @@ static void mmc_power_up(struct mmc_host *host)
 	mmc_delay(10);
 }
 
-#ifdef CONFIG_BCM_WIFI
-EXPORT_SYMBOL(mmc_power_up); 
-void mmc_power_off(struct mmc_host *host)
-#else
 static void mmc_power_off(struct mmc_host *host)
-#endif
 {
 	host->ios.clock = 0;
 	host->ios.vdd = 0;
@@ -965,9 +965,6 @@ static void mmc_power_off(struct mmc_host *host)
 	host->ios.timing = MMC_TIMING_LEGACY;
 	mmc_set_ios(host);
 }
-#ifdef CONFIG_BCM_WIFI
-EXPORT_SYMBOL(mmc_power_off); 
-#endif
 
 /*
  * Cleanup when the last reference to the bus operator is dropped.
@@ -1373,14 +1370,10 @@ int mmc_resume_host(struct mmc_host *host)
 	}
 
 	if (host->bus_ops && !host->bus_dead) {
-#ifdef CONFIG_ATH_WIFI
 		if (!host->suspend_keep_power) {
-#endif		
-		mmc_power_up(host);
-		mmc_select_voltage(host, host->ocr);
-#ifdef CONFIG_ATH_WIFI
+			mmc_power_up(host);
+			mmc_select_voltage(host, host->ocr);
 		}
-#endif		
 		BUG_ON(!host->bus_ops->resume);
 		err = host->bus_ops->resume(host);
 		if (err) {
@@ -1391,12 +1384,12 @@ int mmc_resume_host(struct mmc_host *host)
 		}
 	}
 	mmc_bus_put(host);
-#if defined(CONFIG_ATH_WIFI) || defined(CONFIG_BCM_WIFI)
+#if defined(CONFIG_ATH_WIFI)
 	if (host->index == ATH_WIFI_SDCC_INDEX) {		
 		pr_info("%s: mmc_resume_host in wifi slot skip cmd7\n",   mmc_hostname(host));
 		return err;
 	}
-#endif 
+#endif
 
 	/*
 	 * We add a slight delay here so that resume can progress
@@ -1460,7 +1453,6 @@ EXPORT_SYMBOL(mmc_set_embedded_sdio_data);
 void power_off_on_host(struct mmc_host *host);
 void mmc_redetect_card(struct mmc_host *host)
 {
-
 	if (NULL == host) {
 		return ;
 	}
@@ -1491,14 +1483,13 @@ void power_off_on_host(struct mmc_host *host)
 EXPORT_SYMBOL(power_off_on_host);
 void power_off_on_host_nolock(struct mmc_host *host)
 {
-
 	mmc_power_off(host);
 	msleep(1000);
 	mmc_power_up(host);
-
 }
 EXPORT_SYMBOL(power_off_on_host_nolock);
 //end
+
 static int __init mmc_init(void)
 {
 	int ret;

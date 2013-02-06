@@ -1999,9 +1999,7 @@ static int netlink_seq_show(struct seq_file *seq, void *v)
 	else {
 		struct sock *s = v;
 		struct netlink_sock *nlk = nlk_sk(s);
-		int t=nlk->pid;
 
-		if (t>=0)
 		seq_printf(seq, "%p %-3d %-6d %08x %-8d %-8d %p %-8d %-8d %-8lu\n",
 			   s,
 			   s->sk_protocol,

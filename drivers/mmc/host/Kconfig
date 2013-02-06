@@ -526,11 +526,11 @@ config ATH_WIFI
 	  Enable Atheros SDIO wifi suspend resume function
 
 config WOW_BY_SDIO_DATA1
-        bool "wakeup by sdio data1"
-        depends on ATH_WIFI
-        default n
-        help
-          Select Y to use sdio data1 to wakeup arm11 otherwise by external WOW_GPIO pin
+	bool "wakeup by sdio data1"
+	depends on ATH_WIFI
+	default n
+	help
+	  Select Y to use sdio data1 to wakeup arm11 otherwise by external WOW_GPIO pin
 
 config MMC_TMIO
 	tristate "Toshiba Mobile IO Controller (TMIO) MMC/SD function support"
@@ -562,12 +562,6 @@ config MMC_VIA_SDMMC
 	  If you have a controller with this interface, say Y or M here.
 
 	  If unsure, say N.
-config BCM_WIFI
-	bool "SDIO suspend and resume method for broadcomm wifi"
-	depends on MMC_MSM
-	default n
-	help
-	  Enable Broadcomm SDIO wifi suspend resume function
 
 config SDH_BFIN
 	tristate "Blackfin Secure Digital Host support"

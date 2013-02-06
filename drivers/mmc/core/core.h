@@ -38,16 +38,12 @@ void mmc_set_timing(struct mmc_host *host, unsigned int timing);
 
 static inline void mmc_delay(unsigned int ms)
 {
-//ruanmeisi_20100618
+//	if (ms < 1000 / HZ) {
 	cond_resched();
 	mdelay(ms);
-	/* if (ms < 1000 / HZ) { */
-	/* 	cond_resched(); */
-	/* 	mdelay(ms); */
-	/* } else { */
-	/* 	msleep(ms); */
-	/* } */
-	//end
+//	} else {
+//		msleep(ms);
+//	}
 }
 
 void mmc_rescan(struct work_struct *work);
@@ -58,7 +54,9 @@ int mmc_attach_mmc(struct mmc_host *host, u32 ocr);
 int mmc_attach_sd(struct mmc_host *host, u32 ocr);
 int mmc_attach_sdio(struct mmc_host *host, u32 ocr);
 
+/* Module parameters */
 extern int use_spi_crc;
+extern int mmc_assume_removable;
 
 /* Debugfs information for hosts and cards */
 void mmc_add_host_debugfs(struct mmc_host *host);

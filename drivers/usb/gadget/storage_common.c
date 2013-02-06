@@ -232,15 +232,6 @@ struct interrupt_data {
 #define SC_WRITE_6			0x0a
 #define SC_WRITE_10			0x2a
 #define SC_WRITE_12			0xaa
-// ruanemisi_20100712 cdrom   auto switch
-#define SC_SWITCH_MODE	0x85 //USB_HML_20100602
-#define SC_SWITCH_MODE_MAC_OS	0xa1 //SCSI Command for swithing on Mac OS
-//end
-//SCSI Command for OS X
-#define SC_GET_CONFIGRATION    0x46
-#define SC_SET_CD_SPEED	           0xbb	
-// xingbeilei_20110801 start_stop usb debug
-#define SC_START_STOP_USB_DEBUG  0x86
 
 /* SCSI Sense Key/Additional Sense Code/ASC Qualifier values */
 #define SS_NO_SENSE				0
@@ -284,9 +275,6 @@ struct fsg_lun {
 	u32		unit_attention_data;
 
 	struct device	dev;
-	//cdrom   0: udisk  1:cdrom
-	int             type;
-	//end	
 };
 
 #define fsg_lun_is_open(curlun)	((curlun)->filp != NULL)

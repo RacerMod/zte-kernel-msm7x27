@@ -31,10 +31,6 @@
 
 #include <mach/dma.h>
 
-//BOOT_JIANGFENG_20100611_01, start
-#include <linux/proc_fs.h>
-#include <linux/zte_memlog.h>
-//BOOT_JIANGFENG_20100611_01, end
 #include "msm_nand.h"
 
 unsigned long msm_nand_phys;
@@ -6808,64 +6804,6 @@ static void setup_mtd_device(struct platform_device *pdev,
 }
 #endif
 
-static struct proc_dir_entry * d_entry;
-
-static int msm_memory_read_proc(
-        char *page, char **start, off_t off, int count, int *eof, void *data)
-{
-	int len = 0;
-	smem_global*	msm_nand_global;
-    msm_nand_global = (smem_global*) ioremap(SMEM_LOG_GLOBAL_BASE,
-										sizeof(smem_global));
-
-	if((msm_nand_global->flash_id[0]==0x2c)&&(msm_nand_global->flash_id[1]==0xbc))
-	{
-		if(msm_nand_global->sdrem_length	==	1)
-			len = sprintf(page, "%s\n","Micron 4G NAND");
-		else
-			len = sprintf(page, "%s\n","Micron 4G NAND");
-			
-	}
-	else if((msm_nand_global->flash_id[0]==0xAD)&&(msm_nand_global->flash_id[1]==0xbc))
-	{
-		if(msm_nand_global->sdrem_length	==	1)
-			len = sprintf(page, "%s\n","Hynix 4G NAND");
-		else
-			len = sprintf(page, "%s\n","Hynix 4G NAND");
-
-	}
-	else if((msm_nand_global->flash_id[0]==0xec)&&(msm_nand_global->flash_id[1]==0xbc))
-	{
-		if(msm_nand_global->sdrem_length	==	1)
-			len = sprintf(page, "%s\n","SAMSUNG 4G NAND");
-		else
-			len = sprintf(page, "%s\n","SAMSUNG 4G NAND");
-	}
-	else
-	{
-		len = sprintf(page, "%s\n","unknown type");
-	}
-	return len;
-}
-
-void  init_memory_proc(void)
-{
-	d_entry = create_proc_entry("msm_memory",
-				    0, NULL);
-        if (d_entry) {
-                d_entry->read_proc = msm_memory_read_proc;
-                d_entry->write_proc = NULL;
-                d_entry->data = NULL;
-        }
-}
-
-void deinit_memory_proc(void)
-{
-	if (NULL != d_entry) {
-		remove_proc_entry("msm_memory", NULL);
-		d_entry = NULL;
-	}
-}
 static int __devinit msm_nand_probe(struct platform_device *pdev)
 {
 	struct msm_nand_info *info;
@@ -6978,7 +6916,6 @@ no_dual_nand_ctlr_support:
 
 	setup_mtd_device(pdev, info);
 	dev_set_drvdata(&pdev->dev, info);
-	init_memory_proc(); //BOOT_JIANGFENG_20100611_01
 
 	return 0;
 
@@ -7013,7 +6950,6 @@ static int __devexit msm_nand_remove(struct platform_device *pdev)
 		kfree(info);
 	}
 
-	deinit_memory_proc();		//BOOT_JIANGFENG_20100611_01
 	return 0;
 }
 

@@ -84,8 +84,8 @@ static unsigned ulpi_read(struct msm_otg *dev, unsigned reg)
 		cpu_relax();
 
 	if (timeout == 0) {
-		printk(KERN_ERR "ulpi_read: timeout %08x\n",
-			readl(USB_ULPI_VIEWPORT));
+		pr_err("%s: timeout %08x\n", __func__,
+				 readl(USB_ULPI_VIEWPORT));
 		spin_unlock_irqrestore(&dev->lock, flags);
 		return 0xffffffff;
 	}
@@ -113,7 +113,7 @@ static int ulpi_write(struct msm_otg *dev, unsigned val, unsigned reg)
 		;
 
 	if (timeout == 0) {
-		printk(KERN_ERR "ulpi_write: timeout\n");
+		pr_err("%s: timeout\n", __func__);
 		spin_unlock_irqrestore(&dev->lock, flags);
 		return -1;
 	}
@@ -341,16 +341,21 @@ static void otg_pm_qos_update_latency(struct msm_otg *dev, int vote)
  */
 static void msm_otg_vote_for_pclk_source(struct msm_otg *dev, int vote)
 {
-        if (NULL == dev->pclk_src) {
-              return ;
-        }
 	if (!pclk_requires_voting(&dev->otg))
 		return;
 
+	if (dev->pdata->usb_in_sps) {
+		if (vote)
+			clk_set_min_rate(dev->dfab_clk, 64000000);
+		else
+			clk_set_min_rate(dev->dfab_clk, 0);
+		return;
+	}
+
 	if (vote)
-		clk_enable(dev->pclk_src);
+		clk_enable(dev->pdata->ebi1_clk);
 	else
-		clk_disable(dev->pclk_src);
+		clk_disable(dev->pdata->ebi1_clk);
 }
 
 /* Controller gives interrupt for every 1 mesc if 1MSIE is set in OTGSC.
@@ -1090,8 +1095,6 @@ void msm_otg_set_id_state(int id)
 void msm_otg_set_vbus_state(int online)
 {
 	struct msm_otg *dev = the_msm_otg;
-	printk(KERN_ERR"%s %d online = %d, in_lpm %d\n",
-	       __FUNCTION__, __LINE__, online, atomic_read(&dev->in_lpm));
 
 	if (!atomic_read(&dev->in_lpm) || !online)
 		return;
@@ -1559,8 +1562,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 			msm_otg_set_power(&dev->otg, USB_IDCHG_MAX);
 		} else {
 			msm_otg_set_power(&dev->otg, 0);
-			pr_debug("entering into lpm %s %d\n",
-				 __FUNCTION__, __LINE__);
+			pr_debug("entering into lpm\n");
 			msm_otg_put_suspend(dev);
 
 			if (dev->pdata->ldo_set_voltage)
@@ -2342,20 +2344,30 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 	clk_set_rate(dev->hs_clk, 60000000);
 
-	/* pm qos request to prevent apps idle power collapse */
-	dev->pdata->pm_qos_req_dma = pm_qos_add_request(PM_QOS_CPU_DMA_LATENCY,
-					PM_QOS_DEFAULT_VALUE);
+	if (dev->pdata->usb_in_sps) {
+		dev->dfab_clk = clk_get(0, "dfab_clk");
+		if (IS_ERR(dev->dfab_clk)) {
+			pr_err("%s: failed to get dfab clk\n", __func__);
+			ret = PTR_ERR(dev->dfab_clk);
+			goto put_hs_clk;
+		}
+	}
 
 	/* If USB Core is running its protocol engine based on PCLK,
 	 * PCLK must be running at >60Mhz for correct HSUSB operation and
 	 * USB core cannot tolerate frequency changes on PCLK. For such
 	 * USB cores, vote for maximum clk frequency on pclk source
 	 */
-	if (dev->pdata->pclk_src_name) {
-		dev->pclk_src = clk_get(0, dev->pdata->pclk_src_name);
-		if (IS_ERR(dev->pclk_src))
-			goto put_hs_clk;
-		clk_set_rate(dev->pclk_src, INT_MAX);
+	dev->pdata->pm_qos_req_dma = pm_qos_add_request(PM_QOS_CPU_DMA_LATENCY,
+					PM_QOS_DEFAULT_VALUE);
+
+	if (pclk_requires_voting(&dev->otg)) {
+		dev->pdata->ebi1_clk = clk_get(NULL, "ebi1_usb_clk");
+		if (IS_ERR(dev->pdata->ebi1_clk)) {
+			ret = PTR_ERR(dev->pdata->ebi1_clk);
+			goto put_dfab_clk;
+		}
+		clk_set_rate(dev->pdata->ebi1_clk, INT_MAX);
 		msm_otg_vote_for_pclk_source(dev, 1);
 	}
 
@@ -2365,7 +2377,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		if (IS_ERR(dev->hs_pclk)) {
 			pr_err("%s: failed to get usb_hs_pclk\n", __func__);
 			ret = PTR_ERR(dev->hs_pclk);
-			goto put_pclk_src;
+			goto put_ebi_clk;
 		}
 		clk_enable(dev->hs_pclk);
 	}
@@ -2559,7 +2571,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	ret = pm_runtime_set_active(&pdev->dev);
 	if (ret < 0)
-		printk(KERN_ERR "pm_runtime: fail to set active\n");
+		pr_err("%s: pm_runtime: Fail to set active\n", __func__);
 
 	ret = 0;
 	pm_runtime_enable(&pdev->dev);
@@ -2568,7 +2580,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	ret = otg_debugfs_init(dev);
 	if (ret) {
-		pr_info("%s: otg_debugfs_init failed\n", __func__);
+		pr_err("%s: otg_debugfs_init failed\n", __func__);
 		goto chg_deinit;
 	}
 
@@ -2630,10 +2642,12 @@ put_hs_pclk:
 		clk_disable(dev->hs_pclk);
 		clk_put(dev->hs_pclk);
 	}
-put_pclk_src:
-	if (dev->pclk_src) {
-		msm_otg_vote_for_pclk_source(dev, 0);
-		clk_put(dev->pclk_src);
+put_ebi_clk:
+	clk_put(dev->pdata->ebi1_clk);
+put_dfab_clk:
+	if (dev->dfab_clk) {
+		clk_set_min_rate(dev->dfab_clk, 0);
+		clk_put(dev->dfab_clk);
 	}
 put_hs_clk:
 	if (dev->hs_clk)
@@ -2700,8 +2714,7 @@ static int __exit msm_otg_remove(struct platform_device *pdev)
 	pm_runtime_disable(&pdev->dev);
 	kfree(dev);
 	pm_qos_remove_request(dev->pdata->pm_qos_req_dma);
-	if (dev->pclk_src) 
-	      clk_put(dev->pclk_src);
+	clk_put(dev->pdata->ebi1_clk);
 	return 0;
 }
 

@@ -24,14 +24,6 @@
  * - disallow access to non-associated queues
  */
 
-/*===========================================================================
-when       who       what, where, why                                             comment tag
---------   ----    -------------------------------------    ----------------------------------
-2010-3-27 chenjun fix CRDB00480356                                           ZTE_Audio_CJ_100327
-2010-1-16 chenjun add adsp wakelock debug log                              ZTE_CJ_adsp_wakelock_100116       
-2010-2-2 chenjun  fix CRDB00443050                                              ZTE_CJ_CRDB00443050
-===========================================================================*/
-
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -48,17 +40,17 @@ static struct wake_lock adsp_wake_lock;
 /* ZTE_CJ_CRDB00443050, chenjun, 2010-2-2, start */
 static inline void prevent_suspend(void)
 {
-       if (!wake_lock_active(&adsp_wake_lock))
-       {
-	wake_lock(&adsp_wake_lock);
-}
+	if (!wake_lock_active(&adsp_wake_lock))
+	{
+		wake_lock(&adsp_wake_lock);
+	}
 }
 static inline void allow_suspend(void)
 {
-       if (wake_lock_active(&adsp_wake_lock))
-       {
-	wake_unlock(&adsp_wake_lock);
-}
+	if (wake_lock_active(&adsp_wake_lock))
+	{
+		wake_unlock(&adsp_wake_lock);
+	}
 }
 
 void resume_prevent_suspend(void)
@@ -343,7 +335,7 @@ int msm_adsp_get(const char *name, struct msm_adsp_module **out,
 		goto done;
 	}
 
-	MM_INFO("module %s has been registered\n", module->name);
+	MM_DBG("module %s has been registered\n", module->name);
 
 done:
 	mutex_unlock(&module->lock);
@@ -455,12 +447,8 @@ int __msm_adsp_write(struct msm_adsp_module *module, unsigned dsp_queue_addr,
 	while (((ctrl_word = readl(info->write_ctrl)) &
 		ADSP_RTOS_WRITE_CTRL_WORD_READY_M) !=
 		ADSP_RTOS_WRITE_CTRL_WORD_READY_V) {
-/* ZTE_CJ_CRDB00483425, chenjun, 2010-4-15, start */
-		// if (cnt > 50) {
-		if (cnt > (50 * 4)) {
-/* ZTE_CJ_CRDB00483425, chenjun, 2010-4-15, end */
+		if (cnt > (50 * 4)) { /* ZTE_CJ_CRDB00483425, chenjun, 2010-4-15 */
 			MM_ERR("timeout waiting for DSP write ready\n");
-			MM_ERR("chenjun:write:write_ctrl = %#x\n", readl(info->write_ctrl));
 			ret_status = -EIO;
 			goto fail;
 		}
@@ -496,12 +484,8 @@ int __msm_adsp_write(struct msm_adsp_module *module, unsigned dsp_queue_addr,
 	while ((readl(info->write_ctrl) &
 		ADSP_RTOS_WRITE_CTRL_WORD_MUTEX_M) ==
 		ADSP_RTOS_WRITE_CTRL_WORD_MUTEX_NAVAIL_V) {
-/* ZTE_CJ_CRDB00483425, chenjun, 2010-4-15, start */
-		// if (cnt > 2500) {
-		if (cnt > (2500 * 4)) {
-/* ZTE_CJ_CRDB00483425, chenjun, 2010-4-15, end */
+		if (cnt > (2500 * 4)) { /* ZTE_CJ_CRDB00483425, chenjun, 2010-4-15 */
 			MM_ERR("timeout waiting for adsp ack\n");
-			MM_ERR("chenjun:ack:write_ctrl = %#x\n", readl(info->write_ctrl));
 			ret_status = -EIO;
 			goto fail;
 		}
@@ -1030,9 +1014,7 @@ int msm_adsp_enable(struct msm_adsp_module *module)
 
 	MM_INFO("enable '%s'state[%d] id[%d]\n",
 				module->name, module->state, module->id);
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, start */
-	MM_INFO("chenjun:adsp_open_count=%d\n", adsp_open_count);
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, end */
+
 	mutex_lock(&module->lock);
 	switch (module->state) {
 	case ADSP_STATE_DISABLED:
@@ -1042,21 +1024,9 @@ int msm_adsp_enable(struct msm_adsp_module *module)
 			break;
 		module->state = ADSP_STATE_ENABLING;
 		mutex_unlock(&module->lock);
-/* ZTE_Audio_CJ_100327, chenjun, 2010-3-27, start */
-#if 0
-/*
-这里的超时会导致
-W/AudioTrack( 1898): obtainBuffer timed out (is the CPU pegged?)...
-*/
 		rc = wait_event_timeout(module->state_wait,
 					module->state != ADSP_STATE_ENABLING,
-					1 * HZ);
-#else
-		rc = wait_event_timeout(module->state_wait,
-					module->state != ADSP_STATE_ENABLING,
-					5 * HZ);
-#endif
-/* ZTE_Audio_CJ_100327, chenjun, 2010-3-27, end */
+					5 * HZ); /* ZTE_Audio_CJ_100327, chenjun, 2010-3-27 */
 		mutex_lock(&module->lock);
 		if (module->state == ADSP_STATE_ENABLED) {
 			rc = 0;
@@ -1108,23 +1078,12 @@ static int msm_adsp_disable_locked(struct msm_adsp_module *module)
 {
 	int rc = 0;
 
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, start */
-	MM_INFO("chenjun:disable_locked:'%s'state[%d]:id[%d]:adsp_open_count=%d\n",
-			   module->name, module->state, module->id, adsp_open_count);
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, end */
-
 	switch (module->state) {
 	case ADSP_STATE_DISABLED:
 		MM_DBG("module '%s' already disabled\n", module->name);
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, start */
-		MM_INFO("chenjun:module '%s' already disabled\n", module->name);
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, end */
 		break;
 	case ADSP_STATE_ENABLING:
 	case ADSP_STATE_ENABLED:
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, start */
-		MM_INFO("chenjun:module'%s' to disabled\n", module->name);
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, end */
 		rc = rpc_adsp_rtos_app_to_modem(RPC_ADSP_RTOS_CMD_DISABLE,
 						module->id, module);
 		module->state = ADSP_STATE_DISABLED;
@@ -1134,12 +1093,9 @@ static int msm_adsp_disable_locked(struct msm_adsp_module *module)
 		if (--adsp_open_count == 0) {
 			disable_irq(INT_ADSP);
 			allow_suspend();
-			MM_INFO("disable interrupt\n");
+			MM_DBG("disable interrupt\n");
 		}
 		mutex_unlock(&adsp_open_lock);
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, start */
-	MM_INFO("chenjun:adsp_open_count=%d\n", adsp_open_count);
-/* ZTE_CJ_adsp_wakelock_100116, chenjun, 2010-1-16, end */
 	}
 	return rc;
 }
@@ -1237,6 +1193,7 @@ static int msm_adsp_probe(struct platform_device *pdev)
 	}
 
 	msm_adsp_publish_cdevs(adsp_modules, count);
+	rmtask_init();
 
 	return 0;
 

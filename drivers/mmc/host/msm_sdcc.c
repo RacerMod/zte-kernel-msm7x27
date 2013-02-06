@@ -57,15 +57,9 @@
 
 #include "msm_sdcc.h"
 
-#ifdef CONFIG_BCM_WIFI
-#include "../../../arch/arm/mach-msm/proc_comm.h"
-#include <linux/gpio.h>
-#endif
-
 #define DRIVER_NAME "msm-sdcc"
 
 //ruanmeisi   20100221
-
 #define T_CARD_DRIVER_ID                1
 #define DPRINTK(fmt, args...)						\
 	printk(KERN_ERR "mmc:%s: %d: " fmt "",                     \
@@ -174,7 +168,8 @@ static void msmsdcc_reset_and_restore(struct msmsdcc_host *host)
 		pr_err("%s: Clock deassert failed at %u Hz with err %d\n",
 				mmc_hostname(host->mmc), host->clk_rate, ret);
 
-	pr_info("%s: Controller has been reset\n", mmc_hostname(host->mmc));
+	pr_info("%s: Controller has been reinitialized\n",
+			mmc_hostname(host->mmc));
 
 	/* Restore the contoller state */
 	writel(host->pwr, host->base + MMCIPOWER);
@@ -1118,11 +1113,7 @@ msmsdcc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	msmsdcc_request_start(host, mrq);
 	//ruanmeisi_20100510
-#ifdef CONFIG_BCM_WIFI
-    mod_timer(&host->command_timer, jiffies + 2 * HZ);
-#else
 	mod_timer(&host->command_timer, jiffies + HZ);
-#endif
 	//end
 	spin_unlock_irqrestore(&host->lock, flags);
 }
@@ -1727,8 +1718,8 @@ msmsdcc_probe(struct platform_device *pdev)
 	if (plat->sdiowakeup_irq) {
 		ret = request_irq(plat->sdiowakeup_irq,
 			msmsdcc_platform_sdiowakeup_irq,
-#ifdef CONFIG_ATH_WIFI	
-#ifdef CONFIG_WOW_BY_SDIO_DATA1	
+#ifdef CONFIG_ATH_WIFI
+#ifdef CONFIG_WOW_BY_SDIO_DATA1
 			IRQF_SHARED | IRQF_TRIGGER_FALLING,
 			DRIVER_NAME "sdiowakeup", host);
 #else			
@@ -1748,7 +1739,7 @@ msmsdcc_probe(struct platform_device *pdev)
 			pr_info("%s use sdiowakup irq\n", mmc_hostname(mmc));
 #else
 			pr_info("%s use WoW EXT GPIO irq\n", mmc_hostname(mmc));
-#endif		
+#endif
 			//ZTE_ZBS_20110308: NOTE, both ATH and BCM don't use this SDIO wake up IRQ
 			set_irq_wake(plat->sdiowakeup_irq, 1);
 			disable_irq(plat->sdiowakeup_irq);
@@ -1939,103 +1930,12 @@ static int msmsdcc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-#if defined(CONFIG_BCM_WIFI)
-struct msmsdcc_host *wlan_host;
-void plat_disable_wlan_slot(void)
-{
-	struct msmsdcc_host *host = wlan_host;
-
-	if (!host)
-	    return;
-
-	if (host->plat->status_irq)
-		disable_irq(host->plat->status_irq);
-	writel(0, host->base + MMCIMASK0);
-	if (host->clks_on) {
-		clk_disable(host->clk);
-		clk_disable(host->pclk);
-		host->clks_on = 0;
-	}
-	if (host->plat->sdiowakeup_irq)
-		enable_irq(host->plat->sdiowakeup_irq);
-}
-EXPORT_SYMBOL(plat_disable_wlan_slot);
-
-void plat_enable_wlan_slot(void)
-{
-	struct msmsdcc_host *host = wlan_host;
-	unsigned long flags;
-
-	if (!host)
-	    return;
-
-	spin_lock_irqsave(&host->lock, flags);
-	if (!host->clks_on) {
-		clk_enable(host->pclk);
-		clk_enable(host->clk);
-		host->clks_on = 1;
-	}
-	writel(host->mci_irqenable, host->base + MMCIMASK0);
-	spin_unlock_irqrestore(&host->lock, flags);
-	if (host->plat->sdiowakeup_irq)
-		disable_irq(host->plat->sdiowakeup_irq);
-	if (host->plat->status_irq)
-		enable_irq(host->plat->status_irq);
-
-}
-EXPORT_SYMBOL(plat_enable_wlan_slot);
-#endif /*defined(CONFIG_BCM_WIFI)*/
-
-#ifdef CONFIG_BCM_WIFI
-#define BRCM_CRTL_HOST_POWER 1
-/* Broadcom: We have to turn off host power to get 
-   the min power consumption when wifi shutdown. */
-#ifdef BRCM_CRTL_HOST_POWER
-static struct mmc_host *wifi_host = NULL;
-
-extern void mmc_power_up(struct mmc_host *host);
-extern void mmc_power_off(struct mmc_host *host);
-extern u32 mmc_select_voltage(struct mmc_host *host, u32 ocr);
-
-void msmsdcc_wifi_host_off(void){
-	printk("%s: enter, wifi_host=%p\n", __FUNCTION__, wifi_host);
-
-	if (wifi_host){
-		printk("%s: call mmc_power_off()\n", __FUNCTION__);
-		mmc_power_off(wifi_host);		
-	} else
-		printk("%s: skip\n", __FUNCTION__); 
-}
-EXPORT_SYMBOL(msmsdcc_wifi_host_off);
-
-void msmsdcc_wifi_host_on(void){
-	printk("%s: enter, wifi_host=%p\n", __FUNCTION__, wifi_host);
-
-	if (wifi_host){
-		printk("%s: call mmc_power_on()\n", __FUNCTION__);
-		mmc_power_up(wifi_host);		
-		//mmc_select_voltage(wifi_host, wifi_host->ocr);
-		wifi_host = NULL;
-	}else
-		printk("%s: skip\n", __FUNCTION__); 
-}
-EXPORT_SYMBOL(msmsdcc_wifi_host_on);
-#endif /*BRCM_CRTL_HOST_POWER*/
-#endif /*CONFIG_BCM_WIFI*/
-
 static int
 msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 {
 	struct mmc_host *mmc = mmc_get_drvdata(dev);
 	struct msmsdcc_host *host = mmc_priv(mmc);
 	int rc = 0;
-
-#ifndef CONFIG_BCM_WIFI
-#ifdef CONFIG_MMC_AUTO_SUSPEND
-	if (test_and_set_bit(0, &host->suspended))
-		return 0;
-#endif
-#endif 
 
 	if (mmc) {
 		if (host->plat->status_irq)
@@ -2046,13 +1946,6 @@ msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 			if (host->plat->status_irq)
 				enable_irq(host->plat->status_irq);
 		}
-#else
-        #ifdef CONFIG_BCM_WIFI
-		if (mmc->card && mmc->card->type != MMC_TYPE_SDIO)
-		#else
-		if (!mmc->card || mmc->card->type != MMC_TYPE_SDIO)
-		#endif
-			rc = mmc_suspend_host(mmc, state);
 #endif /*CONFIG_ATH_WIFI*/
 		if (!rc) {
 			writel(0, host->base + MMCIMASK0);
@@ -2069,16 +1962,8 @@ msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 			pr_info("%s () enable sdiowakeup_irq %d\n", __func__, host->plat->sdiowakeup_irq);
 			enable_irq(host->plat->sdiowakeup_irq);
 		}
-		
-        #ifdef CONFIG_BCM_WIFI
-        #ifdef BRCM_CRTL_HOST_POWER
-		if (!wifi_host && mmc->card && mmc->card->type == MMC_TYPE_SDIO){
-			wifi_host = mmc;
-			printk("shaohua %s: wifi_host=%p\n", __FUNCTION__, wifi_host);						
-	  }	
-      #endif
-      #endif /*CONFIG_BCM_WIFI*/
 	}
+
 	return rc;
 }
 
@@ -2113,28 +1998,14 @@ msmsdcc_resume(struct platform_device *dev)
 		
 #ifdef CONFIG_ATH_WIFI
                if (1) 
-#else
-    #ifdef CONFIG_BCM_WIFI
-		if (mmc->card && mmc->card->type != MMC_TYPE_SDIO)
-		#else
-		if (!mmc->card || mmc->card->type != MMC_TYPE_SDIO)
-		#endif /*CONFIG_BCM_WIFI*/
 #endif /*CONFIG_ATH_WIFI*/
 			mmc_resume_host(mmc);
 		if (host->plat->status_irq)
               enable_irq(host->plat->status_irq);
-
-#ifdef CONFIG_BCM_WIFI
-#ifdef BRCM_CRTL_HOST_POWER
-		if (wifi_host && mmc->card && mmc->card->type == MMC_TYPE_SDIO){
-			printk("shaohua %s: wifi_host=%p\n", __FUNCTION__, wifi_host);						
-	  }	
-#endif
-#endif /*CONFIG_BCM_WIFI*/
-
 	}
 	return 0;
 }
+
 #else
 #define msmsdcc_suspend NULL
 #define msmsdcc_resume NULL
@@ -2366,6 +2237,7 @@ static int __init msmsdcc_dbg_init(void)
 	return 0;
 }
 #endif
+
 //ruanmeisi_20100618
 static void
 msmsdcc_queue_delay_request_done(struct msmsdcc_host *host, struct mmc_request *mrq)
@@ -2405,16 +2277,11 @@ static int create_mmc_work_queue(struct msmsdcc_host *host)
 	if (NULL == host->workqueue) {
 		return -1;
 	}
-	
-
-
 	INIT_DELAYED_WORK(&host->cmd_timeout_work, msmsdcc_cmd_timeout);
 	host->timeout_mrq = NULL;
 	
 	return 0;
 }
-
-
 
 static int destroy_mmc_work_queue(struct msmsdcc_host *host)
 {
@@ -2424,5 +2291,4 @@ static int destroy_mmc_work_queue(struct msmsdcc_host *host)
 	destroy_workqueue(host->workqueue);
 	host->workqueue = NULL;
 	return 0;
-
 }

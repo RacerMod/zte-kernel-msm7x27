@@ -51,7 +51,7 @@ static unsigned int poolsize_hdlc = 8;  /*Number of items in the mempool */
 static unsigned int itemsize_write_struct = 20; /*Size of item in the mempool */
 static unsigned int poolsize_write_struct = 8; /* Num of items in the mempool */
 /* This is the max number of user-space clients supported at initialization*/
-static unsigned int max_clients = 30;
+static unsigned int max_clients = 15;
 static unsigned int threshold_client_limit = 30;
 /* This is the maximum number of pkt registrations supported at initialization*/
 unsigned int diag_max_registration = 25;

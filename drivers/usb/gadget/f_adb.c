@@ -120,6 +120,8 @@ static struct usb_descriptor_header *hs_adb_descs[] = {
 /* temporary variable used between adb_open() and adb_gadget_bind() */
 static struct adb_dev *_adb_dev;
 
+static atomic_t adb_enable_excl;
+
 static inline struct adb_dev *func_to_dev(struct usb_function *f)
 {
 	return container_of(f, struct adb_dev, function);
@@ -216,7 +218,7 @@ static void adb_complete_out(struct usb_ep *ep, struct usb_request *req)
 	wake_up(&dev->read_wq);
 }
 
-static int create_bulk_endpoints(struct adb_dev *dev,
+static int __init create_bulk_endpoints(struct adb_dev *dev,
 				struct usb_endpoint_descriptor *in_desc,
 				struct usb_endpoint_descriptor *out_desc)
 {
@@ -263,7 +265,7 @@ static int create_bulk_endpoints(struct adb_dev *dev,
 	return 0;
 
 fail:
-	printk(KERN_ERR "adb_bind() could not allocate requests\n");
+	DBG(cdev, "could not allocate request\n");
 	return -1;
 }
 
@@ -354,12 +356,6 @@ static ssize_t adb_write(struct file *fp, const char __user *buf,
 	if (_lock(&dev->write_excl))
 		return -EBUSY;
 
-	if (!atomic_read(&dev->online)) {
-		//ruanmeisi_20100713
-		_unlock(&dev->write_excl);
-		//end
-		return -EIO;
-	}
 	while (count > 0) {
 		if (atomic_read(&dev->error)) {
 			DBG(cdev, "adb_write dev->error\n");
@@ -415,7 +411,7 @@ static ssize_t adb_write(struct file *fp, const char __user *buf,
 
 static int adb_open(struct inode *ip, struct file *fp)
 {
-	printk(KERN_INFO "adb_open\n");
+	pr_debug("adb_open\n");
 	if (_lock(&_adb_dev->open_excl))
 		return -EBUSY;
 
@@ -429,7 +425,7 @@ static int adb_open(struct inode *ip, struct file *fp)
 
 static int adb_release(struct inode *ip, struct file *fp)
 {
-	printk(KERN_INFO "adb_release\n");
+	pr_debug("adb_release\n");
 	_unlock(&_adb_dev->open_excl);
 	return 0;
 }
@@ -449,6 +445,38 @@ static struct miscdevice adb_device = {
 	.fops = &adb_fops,
 };
 
+static int adb_enable_open(struct inode *ip, struct file *fp)
+{
+	if (atomic_inc_return(&adb_enable_excl) != 1) {
+		atomic_dec(&adb_enable_excl);
+		return -EBUSY;
+	}
+
+	pr_debug("%s: Enabling adb\n", __func__);
+	android_enable_function(&_adb_dev->function, 1);
+
+	return 0;
+}
+
+static int adb_enable_release(struct inode *ip, struct file *fp)
+{
+	pr_debug("%s: Disabling adb\n", __func__);
+	android_enable_function(&_adb_dev->function, 0);
+	atomic_dec(&adb_enable_excl);
+	return 0;
+}
+
+static const struct file_operations adb_enable_fops = {
+	.owner =   THIS_MODULE,
+	.open =    adb_enable_open,
+	.release = adb_enable_release,
+};
+
+static struct miscdevice adb_enable_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "android_adb_enable",
+	.fops = &adb_enable_fops,
+};
 
 static int
 adb_function_bind(struct usb_configuration *c, struct usb_function *f)
@@ -503,10 +531,10 @@ adb_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	atomic_set(&dev->error, 1);
 	spin_unlock_irq(&dev->lock);
 
-	//misc_deregister(&adb_device);
-	//misc_deregister(&adb_enable_device);
-	//kfree(_adb_dev);
-	//_adb_dev = NULL;
+	misc_deregister(&adb_device);
+	misc_deregister(&adb_enable_device);
+	kfree(_adb_dev);
+	_adb_dev = NULL;
 }
 
 static int adb_function_set_alt(struct usb_function *f,
@@ -532,7 +560,6 @@ static int adb_function_set_alt(struct usb_function *f,
 		return ret;
 	}
 	atomic_set(&dev->online, 1);
-	atomic_set(&dev->error, 0);
 
 	/* readers may be blocked waiting for us to go online */
 	wake_up(&dev->read_wq);
@@ -556,16 +583,28 @@ static void adb_function_disable(struct usb_function *f)
 	VDBG(cdev, "%s disabled\n", dev->function.name);
 }
 
-int adb_bind_config(struct usb_configuration *c)
+static int adb_bind_config(struct usb_configuration *c)
 {
-	struct adb_dev *dev = _adb_dev;
+	struct adb_dev *dev;
 	int ret;
 
-	printk(KERN_INFO "adb_bind_config\n");
-	if (NULL == dev) {
-		printk(KERN_ERR"adb_bind_config fail\n");
-		return -1;
-	}
+	pr_debug("adb_bind_config\n");
+
+	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+	if (!dev)
+		return -ENOMEM;
+
+	spin_lock_init(&dev->lock);
+
+	init_waitqueue_head(&dev->read_wq);
+	init_waitqueue_head(&dev->write_wq);
+
+	atomic_set(&dev->open_excl, 0);
+	atomic_set(&dev->read_excl, 0);
+	atomic_set(&dev->write_excl, 0);
+
+	INIT_LIST_HEAD(&dev->tx_idle);
+
 	dev->cdev = c->cdev;
 	dev->function.name = "adb";
 	dev->function.descriptors = fs_adb_descs;
@@ -575,49 +614,44 @@ int adb_bind_config(struct usb_configuration *c)
 	dev->function.set_alt = adb_function_set_alt;
 	dev->function.disable = adb_function_disable;
 
+	/* start disabled */
+	dev->function.disabled = 1;
 
-	ret = usb_add_function(c, &dev->function);
-	if (ret) {
-		printk(KERN_ERR "adb gadget driver failed to initialize\n");
-		return ret;
-	}
-	return 0;
-}
-
-
-EXPORT_SYMBOL(adb_bind_config);
-int  adb_init(void)
-{
-	int ret;
-	struct adb_dev *dev = NULL;
-	dev =  kzalloc(sizeof(*dev), GFP_KERNEL);
-	if (!dev)
-		return -ENOMEM;
-	spin_lock_init(&dev->lock);
-	init_waitqueue_head(&dev->read_wq);
-	init_waitqueue_head(&dev->write_wq);
-	atomic_set(&dev->open_excl, 0);
-	atomic_set(&dev->read_excl, 0);
-	atomic_set(&dev->write_excl, 0);
-	INIT_LIST_HEAD(&dev->tx_idle);
+	/* _adb_dev must be set before calling usb_gadget_register_driver */
 	_adb_dev = dev;
-	printk(KERN_INFO "f_adb init\n");
+
 	ret = misc_register(&adb_device);
 	if (ret)
 		goto err1;
+	ret = misc_register(&adb_enable_device);
+	if (ret)
+		goto err2;
+
+	ret = usb_add_function(c, &dev->function);
+	if (ret)
+		goto err3;
+
 	return 0;
-err1:
-	printk(KERN_ERR "adb gadget driver failed to initialize\n");
-	return ret;	
-}
 
-EXPORT_SYMBOL(adb_init);
-
-int adb_deinit(void)
-{
+err3:
+	misc_deregister(&adb_enable_device);
+err2:
 	misc_deregister(&adb_device);
-	kfree(_adb_dev);
-	_adb_dev = NULL;
+err1:
+	kfree(dev);
+	pr_err("adb gadget driver failed to initialize\n");
+	return ret;
+}
+
+static struct android_usb_function adb_function = {
+	.name = "adb",
+	.bind_config = adb_bind_config,
+};
+
+static int __init init(void)
+{
+	pr_debug("f_adb init\n");
+	android_register_function(&adb_function);
 	return 0;
 }
-EXPORT_SYMBOL(adb_deinit);
+module_init(init);

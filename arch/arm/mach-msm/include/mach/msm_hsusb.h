@@ -154,7 +154,6 @@ struct msm_hsusb_platform_data {
 	int vreg5v_required;
 
 	u32 swfi_latency;
-	int zte_pid;//hemulu hyj add to froyo
 };
 
 struct msm_otg_platform_data {
@@ -180,7 +179,6 @@ struct msm_otg_platform_data {
 	 * now being disabled because of H/w issues
 	 */
 	int			pclk_is_hw_gated;
-	char			*pclk_src_name;
 
 	int (*ldo_init) (int init);
 	int (*ldo_enable) (int enable);
@@ -207,6 +205,7 @@ struct msm_otg_platform_data {
 	int (*init_vddcx)(int init);
 
 	struct pm_qos_request_list *pm_qos_req_dma;
+	struct clk *ebi1_clk;
 };
 
 struct msm_usb_host_platform_data {

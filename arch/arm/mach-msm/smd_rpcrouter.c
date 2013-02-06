@@ -69,11 +69,8 @@ enum {
 static int msm_rpc_connect_timeout_ms;
 module_param_named(connect_timeout, msm_rpc_connect_timeout_ms,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
-//ZTE_LOG_cxh_0224
-//static int smd_rpcrouter_debug_mask;
 
-
-static int smd_rpcrouter_debug_mask = SMEM_LOG;
+static int smd_rpcrouter_debug_mask;
 module_param_named(debug_mask, smd_rpcrouter_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 
@@ -1270,16 +1267,14 @@ static int msm_rpc_write_pkt(
 		spin_unlock_irqrestore(&r_ept->quota_lock, flags);
 
 	xprt_info = rpcrouter_get_xprt_info(hdr->dst_pid);
-	/* 
-	 * xprt_info is null when called smd_rpcrouter_close()
+
+	/* xprt_info is null when called smd_rpcrouter_close()
 	 * Must have a check to fix this NULL pointer problem.
 	 * ZHENGCHAO_PM_20110726
-	 *
-	 * */
+	 */
 	if (!xprt_info){
-		                printk(KERN_ERR"xprt_info is NULL\n");
-				return 0;
-	
+		printk(KERN_ERR"xprt_info is NULL\n");
+		return 0;
 	}
 
 	spin_lock_irqsave(&xprt_info->lock, flags);

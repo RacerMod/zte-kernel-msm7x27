@@ -138,7 +138,7 @@ obj-$(CONFIG_MACH_MSM8X60_QRDC) += board-qrdc.o
 obj-$(CONFIG_TROUT_H2W) += board-trout-h2w.o
 obj-$(CONFIG_TROUT_BATTCHG) += htc_battery.o
 obj-$(CONFIG_TROUT_PWRSINK) += htc_pwrsink.o
-obj-$(CONFIG_ARCH_MSM7X27) += devices-msm7x27.o  msm_vibrator.o
+obj-$(CONFIG_ARCH_MSM7X27) += devices-msm7x27.o msm_vibrator.o
 obj-$(CONFIG_ARCH_MSM7X30) += board-msm7x30.o devices-msm7x30.o
 obj-$(CONFIG_ARCH_MSM7X30) += clock-7x30.o acpuclock-7x30.o
 obj-$(CONFIG_ARCH_MSM7X25) += board-msm7x27.o devices-msm7x25.o
@@ -147,6 +147,9 @@ obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire.o board-sapphire-gpio.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-mmc.o board-sapphire-wifi.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
+
+obj-$(CONFIG_MACH_BLADE) += board-zte-blade-keypad.o board-zte-blade.o
+obj-$(CONFIG_MACH_MOONCAKE) += board-zte-mooncake-keypad.o board-zte-mooncake.o
 
 obj-$(CONFIG_TROUT_BATTCHG) += htc_battery.o
 
@@ -170,7 +173,3 @@ endif
 obj-y	+= gpio.o generic_gpio.o
 obj-$(CONFIG_MSM_SLEEP_STATS) += msm_sleep_stats.o
 obj-y	+= tlmm-msm7200a.o
-
-# Add ZTE board files and keypad config files
-obj-$(CONFIG_MACH_BLADE) += board-zte-blade-keypad.o board-zte-blade.o
-obj-$(CONFIG_MACH_MOONCAKE) += board-zte-mooncake-keypad.o board-zte-mooncake.o

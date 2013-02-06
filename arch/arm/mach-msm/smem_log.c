@@ -18,13 +18,6 @@
 /*
  * Shared memory logging implementation.
  */
-/* ========================================================================================
-when                who               what, where, why                comment tag
---------         ----       -----------------------------             --------------------------
-2010-09-25    zhengchao             add dump a9 log support           zhengchao_a9log_20100925
-2010-03-26    caozy                 Add new log support               caozy_log_20100306
-2010-02-08    chenxihua     	    add ram log merge from 726G			    ZTE_LOG_CXH_0208
-==========================================================================================*/
 
 #include <linux/slab.h>
 #include <linux/uaccess.h>
@@ -41,20 +34,12 @@ when                who               what, where, why                comment ta
 #include <linux/sched.h>
 #include <linux/wait.h>
 #include <linux/delay.h>
-#include <linux/vmalloc.h>
 
 #include <mach/msm_iomap.h>
 #include <mach/smem_log.h>
-#include <mach/zte_memlog.h>
 
 #include "smd_private.h"
 #include "smd_rpc_sym.h"
-#undef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-
-
-#ifdef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-#include <linux/proc_fs.h>
-#endif
 #include "modem_notifier.h"
 
 #define DEBUG
@@ -93,7 +78,7 @@ struct smem_log_item {
 	uint32_t data3;
 };
 
-#define SMEM_LOG_NUM_ENTRIES 20000
+#define SMEM_LOG_NUM_ENTRIES 2000
 #define SMEM_LOG_EVENTS_SIZE (sizeof(struct smem_log_item) * \
 			      SMEM_LOG_NUM_ENTRIES)
 
@@ -135,31 +120,6 @@ enum smem_logs {
 };
 
 static struct smem_log_inst inst[NUM];
-
-typedef struct {
-	uint32_t magic;
-	struct {
-		volatile uint32_t smem_log_write_idx;
-		volatile uint32_t smem_log_write_wrap;
-	} log_area_info[NUM];
-} smem_log_info;
-
-static smem_log_info *log_info;
-
-#define SMEM_LOG_MPROC_OFFSET   SMEM_LOG_ENTRY_OFFSET
-#define SMEM_LOG_STATIC_OFFSET  (SMEM_LOG_MPROC_OFFSET + SMEM_LOG_EVENTS_SIZE)
-#define SMEM_LOG_POWER_OFFSET   (SMEM_LOG_STATIC_OFFSET + SMEM_STATIC_LOG_EVENTS_SIZE)
-#ifdef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-#define SMEM_LOG_STRING_OFFSET  (SMEM_LOG_POWER_OFFSET + SMEM_POWER_LOG_EVENTS_SIZE)//zhengchao
-#endif
-
-static uint32_t log_area_offset[NUM] = {
-  SMEM_LOG_MPROC_OFFSET,
-  SMEM_LOG_STATIC_OFFSET,
-  SMEM_LOG_POWER_OFFSET
-};
-
-#define SMEM_MAGIC  0xdeadbeef
 
 #if defined(CONFIG_DEBUG_FS)
 
@@ -849,87 +809,16 @@ void smem_log_event6_to_static(uint32_t id, uint32_t data1, uint32_t data2,
 				 data1, data2, data3, data4, data5, data6);
 }
 
-#ifdef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-static char *a9_old_log;
-static size_t a9_old_log_size=0x20000;//128k
-
-static ssize_t a9_log_read_old(struct file *file, char __user *buf,
-				    size_t len, loff_t *offset)
-{
-	loff_t pos = *offset;
-	ssize_t count;
-
-	if (!a9_old_log)
-		return 0;
-
-	if (pos >= a9_old_log_size) {
-		if (a9_old_log) {
-			kfree(a9_old_log);//read a9log for only one time
-			a9_old_log = NULL;
-		}
-		return 0;
-	}
-
-	count = min(len, (size_t)(a9_old_log_size - pos));
-	if (copy_to_user(buf, a9_old_log + pos, count))
-		return -EFAULT;
-
-	*offset += count;
-	return count;
-}
-
-static struct file_operations a9_file_ops = {
-	.owner = THIS_MODULE,
-	.read = a9_log_read_old,
-};
-
-int a9_log_init(void)
-{
-	struct proc_dir_entry *entry;
-
-	a9_old_log = kmalloc(a9_old_log_size, GFP_KERNEL);
-	if (a9_old_log == NULL) {
-		printk(KERN_ERR
-		       "a9_log: failed to allocate buffer for old log\n");
-		a9_old_log_size = 0;
-		return 0;
-	}
-	memcpy(a9_old_log,
-	       (void *)((uint32_t)log_info+SMEM_LOG_STRING_OFFSET), a9_old_log_size);
-
-	entry = create_proc_entry("last_a9msg", S_IFREG | S_IRUGO, NULL);
-	if (!entry) {
-		printk(KERN_ERR "ram_console: failed to create proc entry\n");
-		kfree(a9_old_log);
-		a9_old_log = NULL;
-		return 0;
-	}
-
-	entry->proc_fops = &a9_file_ops;
-	entry->size = a9_old_log_size;
-	return 0;
-}
-
-#endif
 static int _smem_log_init(void)
 {
 	int ret;
 
-	/* caozy_log_20100306 */
-	log_info = (smem_log_info *)ioremap(MSM_SMEM_RAM_PHYS, MSM_SMEM_RAM_SIZE);
-	if (!log_info) {
-		pr_err("can't get remap MSM_RAM_CONSOLE_PHYS\n");
-		return -ENOMEM;
-	}
-	if (log_info->magic != SMEM_MAGIC) {
-		/* log lost, reinit the control block. */
-		memset(log_info, 0, sizeof(*log_info));
-		log_info->magic = SMEM_MAGIC;
-	}
 	inst[GEN].which_log = GEN;
-	inst[GEN].events = (struct smem_log_item *)((uint32_t)log_info + log_area_offset[GEN]);
-	inst[GEN].idx = (uint32_t *)&(log_info->log_area_info[GEN].smem_log_write_idx);
-
+	inst[GEN].events =
+		(struct smem_log_item *)smem_alloc(SMEM_SMEM_LOG_EVENTS,
+						  SMEM_LOG_EVENTS_SIZE);
+	inst[GEN].idx = (uint32_t *)smem_alloc(SMEM_SMEM_LOG_IDX,
+					     sizeof(uint32_t));
 	if (!inst[GEN].events || !inst[GEN].idx)
 		pr_info("%s: no log or log_idx allocated\n", __func__);
 
@@ -940,9 +829,12 @@ static int _smem_log_init(void)
 	inst[GEN].remote_spinlock = &remote_spinlock;
 
 	inst[STA].which_log = STA;
-	inst[STA].events = (struct smem_log_item *)((uint32_t)log_info + log_area_offset[STA]);
-	inst[STA].idx = (uint32_t *)&(log_info->log_area_info[STA].smem_log_write_idx);
-
+	inst[STA].events =
+		(struct smem_log_item *)
+		smem_alloc(SMEM_SMEM_STATIC_LOG_EVENTS,
+			   SMEM_STATIC_LOG_EVENTS_SIZE);
+	inst[STA].idx = (uint32_t *)smem_alloc(SMEM_SMEM_STATIC_LOG_IDX,
+						     sizeof(uint32_t));
 	if (!inst[STA].events || !inst[STA].idx)
 		pr_info("%s: no static log or log_idx allocated\n", __func__);
 
@@ -953,9 +845,12 @@ static int _smem_log_init(void)
 	inst[STA].remote_spinlock = &remote_spinlock_static;
 
 	inst[POW].which_log = POW;
-	inst[POW].events = (struct smem_log_item *)((uint32_t)log_info + log_area_offset[POW]);
-	inst[POW].idx = (uint32_t *)&(log_info->log_area_info[POW].smem_log_write_idx);
-
+	inst[POW].events =
+		(struct smem_log_item *)
+		smem_alloc(SMEM_SMEM_LOG_POWER_EVENTS,
+			   SMEM_POWER_LOG_EVENTS_SIZE);
+	inst[POW].idx = (uint32_t *)smem_alloc(SMEM_SMEM_LOG_POWER_IDX,
+						     sizeof(uint32_t));
 	if (!inst[POW].events || !inst[POW].idx)
 		pr_info("%s: no power log or log_idx allocated\n", __func__);
 
@@ -976,9 +871,7 @@ static int _smem_log_init(void)
 		return ret;
 
 	init_syms();
-#ifdef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-	a9_log_init();
-#endif
+
 	return 0;
 }
 
@@ -1909,7 +1802,7 @@ static int debug_dump_voters(char *buf, int max, uint32_t cont)
 	return _debug_dump_voters(buf, max);
 }
 
-static char *debug_buffer = NULL;
+static char debug_buffer[EVENTS_PRINT_SIZE];
 
 static ssize_t debug_read(struct file *file, char __user *buf,
 			  size_t count, loff_t *ppos)
@@ -1917,22 +1810,11 @@ static ssize_t debug_read(struct file *file, char __user *buf,
 	int r;
 	static int bsize;
 	int (*fill)(char *, int, uint32_t) = file->private_data;
-	if (!debug_buffer) {
-		debug_buffer = (char *)vmalloc(EVENTS_PRINT_SIZE);
-		if (!debug_buffer)
-			return 0;
-	}
 	if (!(*ppos))
 		bsize = fill(debug_buffer, EVENTS_PRINT_SIZE, 0);
 	DBG("%s: count %d ppos %d\n", __func__, count, (unsigned int)*ppos);
 	r =  simple_read_from_buffer(buf, count, ppos, debug_buffer,
 				     bsize);
-	if (r == 0) {
-		if (debug_buffer) {
-			vfree(debug_buffer);
-			debug_buffer = NULL;
-		}
-	}
 	return r;
 }
 

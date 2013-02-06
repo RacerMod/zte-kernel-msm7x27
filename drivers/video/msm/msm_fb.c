@@ -74,12 +74,6 @@ static int msm_lcd_read_proc(char *page, char **start, off_t off, int count, int
 static int msm_lcd_write_proc(struct file *file, const char __user *buffer,unsigned long count, void *data);
 //ZTE_LCD_LHT_20100622_001 end
 
-#ifdef CONFIG_ZTE_PLATFORM
-#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
-extern int zte_get_ftm_flag(void);
-#endif
-#endif
-
 #ifdef CONFIG_FB_MSM_LOGO
 #define INIT_IMAGE_FILE "/initlogo.rle"
 extern int load_565rle_image(char *filename);
@@ -96,7 +90,7 @@ int vsync_mode = 1;
 
 #define MAX_BLIT_REQ 256
 
-u32 LcdPanleID=(u32)LCD_PANEL_NOPANEL;   //ZTE_LCD_LHT_20100611_001
+u32 LcdPanleID=(u32)LCD_PANEL_NOPANEL; //ZTE_LCD_LHT_20100611_001
 
 #define MAX_FBI_LIST 32
 static struct fb_info *fbi_list[MAX_FBI_LIST];
@@ -356,8 +350,7 @@ static int msm_fb_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	mfd->panel_info.frame_count = 0;
-//ZTE_LCD_LUYA_20100325_001,LCD_LUYA_20100610_01 2009-11-28 decrease initial brightness of backlight 
-	mfd->bl_level = mfd->panel_info.bl_max/6;
+	mfd->bl_level = mfd->panel_info.bl_max;
 #ifdef CONFIG_FB_MSM_OVERLAY
 	mfd->overlay_play_enable = 1;
 #endif
@@ -709,10 +702,9 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		if (!mfd->panel_power_on) {
-//			msleep(16);
+			msleep(16);
 			ret = pdata->on(mfd->pdev);
 			if (ret == 0) {
-				msleep(30); //ZTE_LCD_LUYA_20100221_001 - ZTE_LCD_LUYA_20100629_001
 				mfd->panel_power_on = TRUE;
 
 				msm_fb_set_backlight(mfd,
@@ -742,16 +734,14 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 			mfd->op_enable = FALSE;
 			curr_pwr_state = mfd->panel_power_on;
-			msm_fb_set_backlight(mfd, 0, 0); //ZTE_LCD_LUYA_20100201_001
 			mfd->panel_power_on = FALSE;
 
-//			msleep(16); //ZTE_LCD_LUYA_20100629_001
+			msleep(16);
 			ret = pdata->off(mfd->pdev);
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
 
-/* ZTE_BACKLIGHT_WLY_001 @2009-10-29 backlight go to dim */
-//			msm_fb_set_backlight(mfd, 0, 0);
+			msm_fb_set_backlight(mfd, 0, 0);
 			mfd->op_enable = TRUE;
 		}
 		break;

@@ -24,9 +24,6 @@ struct android_usb_function {
 	struct list_head	list;
 	char			*name;
 	int 			(*bind_config)(struct usb_configuration *c);
-	int 			(*unbind_config)(struct usb_configuration *c);
-	struct device		*dev;
-	int                     disabled;
 };
 
 struct android_usb_product {
@@ -39,9 +36,6 @@ struct android_usb_product {
 	 */
 	int num_functions;
 	char **functions;
-	__u16 adb_product_id;
-	int adb_num_functions;
-	char **adb_functions;
 };
 
 struct android_usb_platform_data {

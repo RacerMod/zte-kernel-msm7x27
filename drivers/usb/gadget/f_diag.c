@@ -518,13 +518,13 @@ static int diag_function_set_alt(struct usb_function *f,
 static void diag_function_unbind(struct usb_configuration *c,
 		struct usb_function *f)
 {
-	//struct diag_context *ctxt = func_to_dev(f);
+	struct diag_context *ctxt = func_to_dev(f);
 
 	if (gadget_is_dualspeed(c->cdev->gadget))
 		usb_free_descriptors(f->hs_descriptors);
 
 	usb_free_descriptors(f->descriptors);
-	//ctxt->ch.priv_usb = NULL;
+	ctxt->ch.priv_usb = NULL;
 }
 
 static int diag_function_bind(struct usb_configuration *c,
@@ -569,7 +569,6 @@ fail:
 
 }
 
-#if 0
 int diag_function_add(struct usb_configuration *c)
 {
 	struct diag_context *dev;
@@ -616,38 +615,6 @@ int diag_function_add(struct usb_configuration *c)
 	return ret;
 }
 
-#else
-int diag_function_add(struct usb_configuration *c, struct diag_context *dev)
-{
-//	struct diag_context *dev;
-	struct usb_diag_ch *_ch = &dev->ch;
-	int  ret;
-
-	DBG(c->cdev, "diag_function_add\n");
-
-	dev->cdev = c->cdev;
-	dev->function.name = _ch->name;
-	dev->function.descriptors = fs_diag_desc;
-	dev->function.hs_descriptors = hs_diag_desc;
-	dev->function.bind = diag_function_bind;
-	dev->function.unbind = diag_function_unbind;
-	dev->function.set_alt = diag_function_set_alt;
-	dev->function.disable = diag_function_disable;
-	spin_lock_init(&dev->lock);
-	INIT_LIST_HEAD(&dev->read_pool);
-	INIT_LIST_HEAD(&dev->write_pool);
-	INIT_WORK(&dev->config_work, usb_config_work_func);
-
-	ret = usb_add_function(c, &dev->function);
-	if (ret) {
-		INFO(c->cdev, "usb_add_function failed\n");
-		_ch->priv_usb = NULL;
-	}
-
-	return ret;
-}
-#endif
-
 static struct
 usb_diag_ch *diag_setup(struct usb_diag_platform_data *pdata)
 {
@@ -686,7 +653,6 @@ static void diag_cleanup(struct usb_diag_ch *_ch)
 }
 
 #ifdef CONFIG_USB_ANDROID_DIAG
-#if 0
 static int __init diag_probe(struct platform_device *pdev)
 {
 	struct diag_context *dev;
@@ -736,7 +702,6 @@ static int __init usb_diag_init(void)
 	return platform_driver_probe(&usb_diag_driver, diag_probe);
 }
 module_init(usb_diag_init);
-#endif
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("usb diag gadget driver");

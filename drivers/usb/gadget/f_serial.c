@@ -651,7 +651,6 @@ gser_unbind(struct usb_configuration *c, struct usb_function *f)
 #ifdef CONFIG_MODEM_SUPPORT
 	struct f_gser *gser = func_to_gser(f);
 #endif
-	gser_disconnect(&gser->port);
 	if (gadget_is_dualspeed(c->cdev->gadget))
 		usb_free_descriptors(f->hs_descriptors);
 	usb_free_descriptors(f->descriptors);
@@ -707,13 +706,11 @@ int gser_bind_config(struct usb_configuration *c, u8 port_num)
 	gser->port.func.set_alt = gser_set_alt;
 	gser->port.func.disable = gser_disable;
 #ifdef CONFIG_MODEM_SUPPORT
-	/* We support only three ports for now */
+	/* We support only two ports for now */
 	if (port_num == 0)
 		gser->port.func.name = "modem";
-	else if (port_num == 1)
-		gser->port.func.name = "nmea";
 	else
-		gser->port.func.name = "at";
+		gser->port.func.name = "nmea";
 	gser->port.func.setup = gser_setup;
 	gser->port.connect = gser_connect;
 	gser->port.get_dtr = gser_get_dtr;
@@ -732,7 +729,6 @@ int gser_bind_config(struct usb_configuration *c, u8 port_num)
 
 #ifdef CONFIG_USB_F_SERIAL
 
-#if 0
 int fserial_nmea_bind_config(struct usb_configuration *c)
 {
 	return gser_bind_config(c, 1);
@@ -757,34 +753,17 @@ int fserial_modem_bind_config(struct usb_configuration *c)
 	return gser_bind_config(c, 0);
 }
 
-int fserial_modem_unbind_config(struct usb_configuration *c)
-{
-	
-
-	/* See if composite driver can allocate
-	 * serial ports. But for now allocate
-	 * two ports for modem and nmea.
-	 */
-	gserial_cleanup();
-	return 0;
-}
-
-
 static struct android_usb_function modem_function = {
 	.name = "modem",
 	.bind_config = fserial_modem_bind_config,
-	.unbind_config = fserial_modem_unbind_config,
 };
 
 static int __init init(void)
 {
-	printk(KERN_INFO "f_serial init\n");
-
 	android_register_function(&modem_function);
 	android_register_function(&nmea_function);
 	return 0;
 }
 module_init(init);
-#endif
 
 #endif /* CONFIG_USB_ANDROID_ACM */

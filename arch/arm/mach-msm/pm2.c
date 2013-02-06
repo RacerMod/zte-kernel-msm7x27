@@ -13,9 +13,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-11/26/10 zc  CONFIG_MSM_GPIO_WAKE, add this feature
-11/11/10 lhx LHX_PM_20101111_01 add code to record which clock is not closed
- 
  *
  */
 
@@ -65,16 +62,6 @@
 #include "spm.h"
 #include "sirc.h"
 
-#ifdef CONFIG_MSM_GPIO_WAKE
-#include <mach/irqs.h>
-#include <mach/gpio.h>
-#include <asm/mach/irq.h>
-#endif
-#include <mach/zte_memlog.h> /* SDUPDATE_MXF_20110309 */
-
-//add by stone 2011_0112
-#define CONFIG_ZTE_ALARM
-
 /******************************************************************************
  * Debug Definitions
  *****************************************************************************/
@@ -89,9 +76,7 @@ enum {
 	MSM_PM_DEBUG_IDLE = 1U << 6,
 };
 
-/* caozy_debug_20091229 */
-//static int msm_pm_debug_mask;
-static int msm_pm_debug_mask = MSM_PM_DEBUG_SUSPEND | MSM_PM_DEBUG_POWER_COLLAPSE;
+static int msm_pm_debug_mask;
 module_param_named(
 	debug_mask, msm_pm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
 );
@@ -582,8 +567,7 @@ static int msm_pm_poll_state(int nr_grps, struct msm_pm_polled_group *grps)
  *****************************************************************************/
 
 #define SCLK_HZ (32768)
-/*ZTE_HYJ_AUTO_WAKEUP_PROBLEM 2010.01.18  (0x6DDD000)->(0x54600000)*/
-#define MSM_PM_SLEEP_TICK_LIMIT (0x54600000)
+#define MSM_PM_SLEEP_TICK_LIMIT (0x6DDD000)
 
 #ifdef CONFIG_MSM_SLEEP_TIME_OVERRIDE
 static int msm_pm_sleep_time_override;
@@ -620,11 +604,10 @@ void msm_pm_set_max_sleep_time(int64_t max_sleep_time_ns)
 		if (msm_pm_max_sleep_time == 0)
 			msm_pm_max_sleep_time = 1;
 	}
-/*ZTE_HYJ_ADD_LOG_20100504 begin*/
+
 	MSM_PM_DPRINTK(MSM_PM_DEBUG_SUSPEND, KERN_INFO,
-		"%s(): Requested %lld ns Giving %u sclk ticks (= %d s)\n", __func__,
-		max_sleep_time_ns, msm_pm_max_sleep_time,msm_pm_max_sleep_time>>15);
-/*ZTE_HYJ_ADD_LOG_20100504 end*/
+		"%s(): Requested %lld ns Giving %u sclk ticks\n", __func__,
+		max_sleep_time_ns, msm_pm_max_sleep_time);
 	local_irq_restore(flags);
 }
 EXPORT_SYMBOL(msm_pm_set_max_sleep_time);
@@ -964,91 +947,6 @@ static int msm_pm_modem_busy(void)
 	return 0;
 }
 
-#ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
-/*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 begin*/
-struct msm_pm_smem_t * get_msm_pm_smem_data(void)
-{
-	return msm_pm_smem_data;
-}
-/*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 end*/
-#endif
-
-long lateresume_2_earlysuspend_time_s = 0;		//LHX_PM_20110411_01 time to record how long it takes to earlysuspend after last resume. namely,to record how long the LCD keeps on.
-void zte_update_lateresume_2_earlysuspend_time(bool resume_or_earlysuspend)	// LHX_PM_20110411_01 resume_or_earlysuspend? lateresume : earlysuspend
-{
-	if(resume_or_earlysuspend)//lateresume,need to record when the lcd is turned on
-	{
-		lateresume_2_earlysuspend_time_s = current_kernel_time().tv_sec;
-	}
-	else	//earlysuspend,need to record when the lcd is turned off
-	{
-		lateresume_2_earlysuspend_time_s = current_kernel_time().tv_sec - lateresume_2_earlysuspend_time_s;	//record how long the lcd keeps on
-	}
-}
-
-#ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
-extern unsigned pm_modem_sleep_time_get(void);
-#else
-unsigned pm_modem_sleep_time_get(void)
-{
-       return  0;
-       }
-#endif
-
-/*BEGIN LHX_PM_20110324_01 add code to record how long the APP sleeps or keeps awake*/
-struct timespec time_updated_when_sleep_awake;
-void record_sleep_awake_time(bool record_sleep_awake)
-{
-	//record_sleep_awake?: true?record awake time, else record  sleep time
-	struct timespec ts;
-	int time_updated_when_sleep_awake_s;
-	int time_updated_when_sleep_awake_ms;
-	long time_updated_when_sleep_awake_ms_temp;
-	static unsigned amss_sleep_time_ms = 0;
-	unsigned amss_sleep_time_ms_temp = 0;
-	static bool sleep_success_flag = false;  //set true while msm_pm_collapse returned 1 by passing record_sleep_awake as true;
-
-
-	ts = current_kernel_time();
-	time_updated_when_sleep_awake_ms_temp = (long)((ts.tv_sec - time_updated_when_sleep_awake.tv_sec) * MSEC_PER_SEC + (int)((ts.tv_nsec / NSEC_PER_MSEC) - (time_updated_when_sleep_awake.tv_nsec / NSEC_PER_MSEC)));
-	time_updated_when_sleep_awake_s = (int)(time_updated_when_sleep_awake_ms_temp/MSEC_PER_SEC);
-	time_updated_when_sleep_awake_ms = (int)(time_updated_when_sleep_awake_ms_temp - time_updated_when_sleep_awake_s * MSEC_PER_SEC);
-//	MSM_PM_DPRINTK(MSM_PM_DEBUG_SUSPEND|MSM_PM_DEBUG_POWER_COLLAPSE,
-//		KERN_INFO, "%s(): keep: %10d.%03d s !!!!!!!!!!%s\n", __func__,time_updated_when_sleep_awake_s,time_updated_when_sleep_awake_ms,record_sleep_awake?"awake":"sleep");
-	if(record_sleep_awake)//record awake time
-	{
-		sleep_success_flag = true;
-		MSM_PM_DPRINTK(MSM_PM_DEBUG_SUSPEND|MSM_PM_DEBUG_POWER_COLLAPSE,
-			KERN_INFO, "%s(): APP keep: %10d.%03d s !!!!!!!!!!awake   lcd on for %10d s %3d %%\n", __func__,time_updated_when_sleep_awake_s,time_updated_when_sleep_awake_ms,(int)lateresume_2_earlysuspend_time_s,(int)(lateresume_2_earlysuspend_time_s*100/(time_updated_when_sleep_awake_s + 1)));//in case Division by zero, +1
-		time_updated_when_sleep_awake = ts; 
-		lateresume_2_earlysuspend_time_s = 0;	//LHX_PM_20110411_01 clear how long the lcd keeps on
-	}
-	else	//record sleep time
-	{
-		if(!sleep_success_flag) //only record sleep time while really resume after successfully suspend/sleep;
-		{
-			printk("%s: modem sleep: resume after fail to suspend\n",__func__);
-			return;
-		}
-		sleep_success_flag = false;
-		amss_sleep_time_ms_temp = amss_sleep_time_ms;	//backup previous total sleep time
-		amss_sleep_time_ms  = pm_modem_sleep_time_get();	//get new total sleep time
-		//printk("%s: modem sleep pre: %d  new %d ms\n",__func__,(int)amss_sleep_time_ms_temp ,amss_sleep_time_ms);
-		amss_sleep_time_ms_temp = amss_sleep_time_ms - amss_sleep_time_ms_temp; //get the sleep time through last sleep
-		//printk("%s: modem sleep this time: %d ms\n",__func__,(int)amss_sleep_time_ms_temp);
-		amss_sleep_time_ms_temp = time_updated_when_sleep_awake_s - amss_sleep_time_ms_temp / MSEC_PER_SEC;	//get modem awake time while APP sleep IN second
-		MSM_PM_DPRINTK(MSM_PM_DEBUG_SUSPEND|MSM_PM_DEBUG_POWER_COLLAPSE,
-		KERN_INFO, "%s(): APP keep: %10d.%03d s !!!!!!!!!!sleep!!!!!!!! modem awake %10d seconds %4d %%o\n", __func__,time_updated_when_sleep_awake_s,time_updated_when_sleep_awake_ms,(int)amss_sleep_time_ms_temp,(int)amss_sleep_time_ms_temp*1000/(time_updated_when_sleep_awake_s + 1));//modem keep awake normally about 2% while app sleeps
-		time_updated_when_sleep_awake = ts; 
-	}
-
-}
-/*End LHX_PM_20110324_01 add code to record how long the APP sleeps or keeps awake*/
-
-
-extern void zte_need_2_prink_rpc_while_wakeup(void);
-
-
 /*
  * Power collapse the Apps processor.  This function executes the handshake
  * protocol with Modem.
@@ -1191,12 +1089,7 @@ static int msm_pm_power_collapse
 	MSM_PM_DPRINTK(MSM_PM_DEBUG_SUSPEND | MSM_PM_DEBUG_POWER_COLLAPSE,
 		KERN_INFO,
 		"%s(): msm_pm_collapse returned %d\n", __func__, collapsed);
-		if(collapsed == 1)
-		{
-			record_sleep_awake_time(true);//LHX_PM_20110324_01 add code to record how long the APP sleeps or keeps awake 
-			
-			zte_need_2_prink_rpc_while_wakeup();//LHX_PM_20110504_03 record the RPC id while RPC wakeup
-		}
+
 	MSM_PM_DPRINTK(MSM_PM_DEBUG_CLOCK, KERN_INFO,
 		"%s(): restore clock rate to %lu\n", __func__,
 		saved_acpuclk_rate);
@@ -1682,7 +1575,6 @@ arch_idle_exit:
 	msm_pm_add_stat(exit_stat, t2 - t1);
 #endif /* CONFIG_MSM_IDLE_STATS */
 }
-extern void dump_clock_require_tcxo(void);//LHX_PM_20101111_01 add code to record which clock is not closed 
 
 /*
  * Suspend the Apps processor.
@@ -1715,11 +1607,8 @@ static int msm_pm_enter(suspend_state_t state)
 
 #ifdef CONFIG_CLOCK_BASED_SLEEP_LIMIT
 	if (ret)
-		{
-			sleep_limit = SLEEP_LIMIT_NO_TCXO_SHUTDOWN;
-		}
+		sleep_limit = SLEEP_LIMIT_NO_TCXO_SHUTDOWN;
 #endif
-	dump_clock_require_tcxo();	//LHX_PM_20110504_02 add code to record which clock is not closed base on BSP 6150
 
 	MSM_PM_DPRINTK(MSM_PM_DEBUG_SUSPEND, KERN_INFO,
 		"%s(): sleep limit %u\n", __func__, sleep_limit);
@@ -1845,12 +1734,8 @@ static uint32_t restart_reason = 0x776655AA;
 
 static void msm_pm_power_off(void)
 {
-	unsigned int subid=14;
 	msm_rpcrouter_close();
-	printk("msm_pm_power_off, set pwrdwn flag\n");
-	msm_proc_comm(PCOM_CUSTOMER_CMD3,0, &subid);
 	msm_proc_comm(PCOM_POWER_DOWN, 0, 0);
-	printk("msm_pm_power_off, waiting POWEROFF\n");
 	for (;;)
 		;
 }
@@ -1858,9 +1743,7 @@ static void msm_pm_power_off(void)
 static void msm_pm_restart(char str, const char *cmd)
 {
 	msm_rpcrouter_close();
-	//ruanmeisi factory data reset too slowly
-	//msm_proc_comm(PCOM_RESET_CHIP, &restart_reason, 0);
-	msm_proc_comm(PCOM_RESET_CHIP_IMM, &restart_reason, 0);
+	msm_proc_comm(PCOM_RESET_CHIP, &restart_reason, 0);
 
 	for (;;)
 		;
@@ -1880,25 +1763,10 @@ static int msm_reboot_call
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned code = simple_strtoul(cmd + 4, 0, 16) & 0xff;
 			restart_reason = 0x6f656d00 | code;
-		#ifdef CONFIG_ZTE_PLATFORM /* SDUPDATE_MXF_20110309 */
-		}else if(!strncmp(cmd, "sd_update", 9)){ 
-			smem_global *global;
-			global = ioremap(SMEM_LOG_GLOBAL_BASE, sizeof(smem_global));
-			if (!global) {
-				printk(KERN_ERR "ioremap failed with SCL_SMEM_LOG_RAM_BASE\n");
-			}else{
-				global->err_dload= 0x2E6F73C9;
-			}
-			iounmap(global);
-			restart_reason = 0x77665501;
-		#endif
 		} else {
 			restart_reason = 0x77665501;
 		}
 	}
-
-       printk(KERN_INFO "[PM] reboot reason = 0x%x\n",restart_reason);
-	
 	return NOTIFY_DONE;
 }
 
@@ -1906,158 +1774,10 @@ static struct notifier_block msm_reboot_notifier = {
 	.notifier_call = msm_reboot_call,
 };
 
-#ifdef CONFIG_MSM_GPIO_WAKE
-#include <linux/input.h>	//LHX_PM_20110506_01 enable  BACK HOME MENU to wakeup
-extern void zte_get_gpio_for_key(int *keycode);
-struct gpio_stat {
-	int gpio;
-	int status;
-	char key_enabled;
-};
-/*
- * Write out the power management statistics.
- */
-static int msm_gpiowake_read_proc
-	(char *page, char **start, off_t off, int count, int *eof, void *data)
-{
-	int len;
-	char *p = page;
-	
-	struct gpio_stat *gpiostat = (struct gpio_stat *) data;
-	pr_info("msm_gpiowake_read_proc: get the gpio=%d\n",gpiostat->gpio);
-	
-//	p += sprintf(p, "%d\n", gpiostat->status);
-	p += sprintf(p, "%s\n", gpiostat->status? &(gpiostat->key_enabled):"D");
-	len = (p - page) - off;
-	*eof = (len <= count) ? 1 : 0;
-	*start = page + off;
-	
-	return len;	
-}
 
-/*
- * .
- */
-static int msm_gpiowake_write_proc(struct file *file, const char __user *buffer,
-	unsigned long count, void *data)
-{
-	char *buf;
-	struct gpio_stat *gpiostat = (struct gpio_stat *) data;
-	static int gpio_wakeup_pre ;	//the previous gpio enabled to wakeup, when configure new gpio, disable the previous.
-	int keycode;
-//	pr_info("[IRQWAKE]msm_gpiowake_write_proc: get the DEFAULT gpio=%d,the previous gpio= %d\n",gpiostat->gpio,gpio_wakeup_pre);
-
-	if (count < 1)
-		return -EINVAL;
-
-	buf = kmalloc(count, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	if (copy_from_user(buf, buffer, count)) {
-		kfree(buf);
-		return -EFAULT;
-	}
-
-	gpiostat->key_enabled = buf[0];
-	if (buf[0] == 'B') {
-		keycode = KEY_BACK;
-	} else if (buf[0] == 'H') {
-		keycode = KEY_HOME;
-	} else if (buf[0] == 'M') {
-		keycode = KEY_MENU;
-	} else if (buf[0] == 'D') {
-		keycode = KEY_RESERVED;
-	} else {
-		kfree(buf);
-		return -EINVAL;
-	}
-	
-	if(keycode != KEY_RESERVED)
-	{
-		zte_get_gpio_for_key(&keycode);
-		gpiostat->gpio = keycode;
-		
-		pr_info("[IRQWAKE] KEY is %s,previous gpio %d,need to enable gpio %d for KEY %s\n",gpiostat->status?"ENABLE":"DISABLE",gpio_wakeup_pre,gpiostat->gpio,&gpiostat->key_enabled);
-		if((gpiostat->status==0) || (gpio_wakeup_pre != gpiostat->gpio))//not enable or enable new gpio
-		{
-			if((gpio_wakeup_pre != gpiostat->gpio) && (gpiostat->status == 1))//if enable new gpio, need to disable previous gpio when it is enable
-			{
-				disable_irq_wake(MSM_GPIO_TO_INT(gpio_wakeup_pre));
-				//pr_info("[IRQWAKE] disable previous gpio= %d\n",gpio_wakeup_pre);
-			}
-			gpio_wakeup_pre = gpiostat->gpio;
-			
-			enable_irq_wake(MSM_GPIO_TO_INT(gpiostat->gpio));
-		//	pr_info("[IRQWAKE] Enable gpio= %d\n",gpiostat->gpio);
-			gpiostat->status = 1;
-		}
-	}
-	else//disable
-	{
-		if(gpiostat->status == 1)
-		{
-			disable_irq_wake(MSM_GPIO_TO_INT(gpio_wakeup_pre));
-			gpiostat->status = 0;
-			pr_info("[IRQWAKE] disable gpio %d to wakeup\n",gpio_wakeup_pre);
-		}
-	}
-	kfree(buf);
-	return count;
-	
-}
-#endif
 /******************************************************************************
  *
  *****************************************************************************/
-#ifdef CONFIG_ZTE_ALARM
-#define ZTE_PROC_COMM_CMD3_RTC_ALARM_DISABLE 6
-#define ZTE_PROC_COMM_CMD3_RTC_ALARM_ENABLE 7
-static int zte_alarm_read_proc
-	(char *page, char **start, off_t off, int count, int *eof, void *data)
-{
-     int len = 0;
-     uint32_t *expiration_ms=(uint32_t*)data;
-	 
-     printk("ZTE rtc alarm read: the expiration time is =%d ms\n",*expiration_ms);
-	
-      len = sprintf(page, "%d\n",*expiration_ms);
-      return len;
-}
-
-static int zte_alarm_write_proc(struct file *file, const char __user *buffer,
-	unsigned long count, void *data)
-{
-	char tmp[16] = {0};
-	char  proc_id = 0;
-	uint32_t *expiration_ms=(uint32_t*)data;
-	
-	if (count < 1)
-		return -EINVAL;
-	
-	if(copy_from_user(tmp, buffer, count))
-                return -EFAULT;
-
-	//To do something here
-	*expiration_ms=(uint32_t) (simple_strtol(tmp, NULL, 10));
-
-      printk("ZTE rtc alarm write: the expiration time is =%d ms\n",*expiration_ms);
-	  
-      if(*expiration_ms==0)
-      	{
-      	    proc_id=ZTE_PROC_COMM_CMD3_RTC_ALARM_DISABLE;
-	    msm_proc_comm(PCOM_CUSTOMER_CMD3, expiration_ms, (unsigned *)(&proc_id));
-      	}
-	 else
-	 {
-	    proc_id=ZTE_PROC_COMM_CMD3_RTC_ALARM_ENABLE;
-	    msm_proc_comm(PCOM_CUSTOMER_CMD3, expiration_ms, (unsigned *)(&proc_id));
-	 }
-	
-	return count;
-
-}
-#endif
 
 /*
  * Initialize the power management subsystem.
@@ -2151,58 +1871,7 @@ static int __init msm_pm_init(void)
 		d_entry->data = NULL;
 	}
 #endif
-#ifdef CONFIG_MSM_GPIO_WAKE
-	{
-		struct gpio_stat *new_gpio_stat;
-		struct proc_dir_entry *entry;
-		/* Create the uid stat struct and append it to the list. */
-		if ((new_gpio_stat = kmalloc(sizeof(struct gpio_stat), GFP_KERNEL)) == NULL)
-			return -ENOMEM;
-		new_gpio_stat->gpio = 37;//gpio to wakeup for blade
-		new_gpio_stat->status = 0;//the gpio status
-		new_gpio_stat->key_enabled = 'D';
-	/*
-		gpiowake_dir = proc_mkdir("gpiowake", NULL);
-		if (gpiowake_dir == NULL) {
-			printk("Unable to create /proc/gpiowake directory");
-			return -ENOMEM;
-		}
-		// write 1 to enable
-		// write 0 to disable
-		// read to get the status
-		entry = create_proc_entry("BACK",
-			S_IRUGO | S_IWUGO, gpiowake_dir);
-	*/
-		entry = create_proc_entry("gpiowake",
-			S_IRUGO | S_IWUGO, NULL);
-		if (entry) {
-			entry->read_proc = msm_gpiowake_read_proc;
-			entry->write_proc = msm_gpiowake_write_proc;
-			entry->data = (void *)new_gpio_stat;
-		}
-		
-	}
-#endif
 
-#ifdef CONFIG_ZTE_ALARM
-{
-       uint32_t *new_data;
-       struct proc_dir_entry *d_entry2;
-	   
-	if ((new_data = kmalloc(sizeof(uint32_t), GFP_KERNEL)) == NULL)
-			return -ENOMEM;
-	*new_data  =0;
-		 
-       d_entry2 = create_proc_entry("zte_alarm",
-			S_IRUGO | S_IWUGO, NULL);
-	   
-	if (d_entry2) {
-		d_entry2->read_proc = zte_alarm_read_proc;
-		d_entry2->write_proc = zte_alarm_write_proc;
-		d_entry2->data = (void *)new_data;
-	}
-}	
-#endif
 	return 0;
 }
 

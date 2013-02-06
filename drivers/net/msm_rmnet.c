@@ -17,13 +17,6 @@
  *
  */
 
-/* ======================================================
-when         who        what, where, why                                 comment tag
---------   ----    -------------------------------------    ----------------------------------
-2010-11-03  ruijiagui    fix can not modify mtu to meet Softbank requirement  ZTE_RIL_RJG_20101103
-2011-04-25  wangcheng    fix the rtp/udp package droped    ZTE_RIL_WANGCHENG_20110425
-=======================================================*/
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
@@ -49,13 +42,8 @@ when         who        what, where, why                                 comment
 /* XXX should come from smd headers */
 #define SMD_PORT_ETHER0 11
 
-//ZTE_RIL_RJG_20101103 begin
-#define ETHERNET_HEAD_LEN   14
-//ZTE_RIL_RJG_20101103 end
-
 /* allow larger frames */
 #define RMNET_DATA_LEN 2000
-#define RMNET_DEFAULT_MTU_LEN 1500
 
 #define HEADROOM_FOR_QOS    8
 
@@ -258,21 +246,15 @@ static void smd_net_data_handler(unsigned long arg)
 	void *ptr = 0;
 	int sz;
 	u32 opmode = p->operation_mode;
-//	unsigned long flags;
+	unsigned long flags;
 
 	for (;;) {
 		sz = smd_cur_packet_size(p->ch);
 		if (sz == 0) break;
 		if (smd_read_avail(p->ch) < sz) break;
 
-//ZTE_RIL_WANGCHENG_20110425 start
-#ifdef CONFIG_ZTE_PLATFORM			
-		if (RMNET_IS_MODE_IP(opmode) ? (sz > ((dev->mtu > RMNET_DEFAULT_MTU_LEN)? dev->mtu:RMNET_DEFAULT_MTU_LEN)) :
-						(sz > (((dev->mtu > RMNET_DEFAULT_MTU_LEN)? dev->mtu:RMNET_DEFAULT_MTU_LEN) + ETH_HLEN))) {
-#else
 		if (RMNET_IS_MODE_IP(opmode) ? (sz > dev->mtu) :
 						(sz > (dev->mtu + ETH_HLEN))) {
-#endif
 			pr_err("rmnet_recv() discarding %d len (%d mtu)\n",
 				sz, RMNET_IS_MODE_IP(opmode) ?
 					dev->mtu : (dev->mtu + ETH_HLEN));
@@ -292,9 +274,9 @@ static void smd_net_data_handler(unsigned long arg)
 					dev_kfree_skb_irq(skb);
 				} else {
 					/* Handle Rx frame format */
-					//spin_lock_irqsave(&p->lock, flags);
-					//opmode = p->operation_mode;
-					//spin_unlock_irqrestore(&p->lock, flags);
+					spin_lock_irqsave(&p->lock, flags);
+					opmode = p->operation_mode;
+					spin_unlock_irqrestore(&p->lock, flags);
 
 					if (RMNET_IS_MODE_IP(opmode)) {
 						/* Driver in IP mode */
@@ -323,7 +305,6 @@ static void smd_net_data_handler(unsigned long arg)
 			pr_err("rmnet_recv() smd lied about avail?!");
 	}
 }
-//ZTE_RIL_RJG_20101103 end
 
 static DECLARE_TASKLET(smd_net_data_tasklet, smd_net_data_handler, 0);
 

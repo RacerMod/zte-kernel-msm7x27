@@ -172,14 +172,14 @@ config MACH_BLADE
 	bool "ZTE BLADE"
 	select ZTE_PLATFORM
 	help
-	  Support for the ZTE MSM7x27 Blade phone.
+	  Support for the ZTE MSM7x27 blade phone.
 
 config MACH_BLADE_CAMERA5MP
 	depends on MACH_BLADE
 	default n
 	bool "ZTE blade board,5MP camera."
 	help
-	  Support for the ZTE blade board,5MP camera.
+	  Support for the ZTE blade board with 5MP camera.
 
 config MACH_MOONCAKE
 	depends on ARCH_MSM7X27
@@ -188,12 +188,7 @@ config MACH_MOONCAKE
 	bool "ZTE MOONCAKE"
 	select ZTE_PLATFORM
 	help
-	  Support for the ZTE MSM7x27 mooncake phone.	
-
-config ZTE_FTM_FLAG_SUPPORT
-	depends on ZTE_PLATFORM
-	default y
-	bool "enable ZTE handset FTM mode detect."
+	  Support for the ZTE MSM7x27 mooncake phone.
 
 config MACH_MSM7X30_SURF
        depends on ARCH_MSM7X30
@@ -961,32 +956,6 @@ config MSM_CPU_FREQ_MIN
 	int "Min CPU Frequency"
 	depends on MSM_CPU_FREQ_SET_MIN_MAX
 	default 245760
-
-config MSM_CPU_FREQ_OVERCLOCK
-	bool "Overclock the CPU frequency (ZTE Blade, ZTE v9 & ZTE Racer)"
-	depends on (MACH_BLADE || MACH_V9 || MACH_MOONCAKE)
-	depends on MSM_CPU_FREQ_SET_MIN_MAX
-	default n
-	help
-	  Adds a number of overclocked frequencies for the 600MHz ZTE Blade, ZTE V9/Light & ZTE Racer/Carl.
-	  If unsure, choose N.
-
-config MSM_CPU_FREQ_OVERCLOCK_800
-	bool "Overclock the CPU frequency (ZTE Blade2 & ZTE Skate)"
-	depends on (MACH_BLADE2 || MACH_SKATE)
-	depends on MSM_CPU_FREQ_SET_MIN_MAX
-	default n
-	help
-	  Adds a number of overclocked frequencies for the 800MHz ZTE Blade2 and ZTE Skate.
-	  If unsure, choose N.
-
-config MSM_CPU_FREQ_OVERCLOCK_AHB
-	bool "Overclock the AHB-bus with 50% for all frequencies from 400MHz and above."
-	depends on (MACH_BLADE || MACH_BLADE2 || MACH_V9 || MACH_SKATE || MACH_MOONCAKE)
-	default n
-	help
-	  Increases the speed of memory read/writes but can cause instability.
-	  If unsure, choose N.
 
 endif # CPU_FREQ_MSM
 
