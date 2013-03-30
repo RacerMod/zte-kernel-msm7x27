@@ -79,7 +79,7 @@ config SENSORS_AKM8976
 	 AKM8976 Compass Driver implemented by HTC.
 
 config SENSOR_LIS302DL
-        tristate "ST LIS302DL acceleration sensor support"
+	tristate "ST LIS302DL acceleration sensor support"
 	depends on I2C
 	default n
 	help 
@@ -87,7 +87,7 @@ config SENSOR_LIS302DL
 	  acceleration sensor support 
 	  
 config SENSOR_ADXL34X
-  tristate "ADI ADXL34X acceleration sensor support"
+	tristate "ADI ADXL34X acceleration sensor support"
 	depends on I2C
 	default n
 	help 
@@ -95,7 +95,7 @@ config SENSOR_ADXL34X
 	  acceleration sensor support 
 	  
 config SENSOR_ACCELERATOR
-  tristate "To support ST&ADI acceleration sensor support"
+	tristate "To support ST&ADI acceleration sensor support"
 	depends on I2C
 	default n
 	help 

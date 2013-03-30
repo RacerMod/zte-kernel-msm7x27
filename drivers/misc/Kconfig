@@ -56,18 +56,10 @@ config AD525X_DPOT_SPI
 config ANDROID_PMEM
 	bool "Android pmem allocator"
 	default y
+
 config FM_SI4708
 	bool "Android fm semiconductor si470x from silicon libraries"
 	default y
-config ANDROID_PMEM_DEBUG
-	bool "Android pmem debug"
-	depends on ANDROID_PMEM
-	default n
-
-config ANDROID_PMEM_KAPI_TEST
-	tristate "Simple module to test Android pmem kernel API"
-	depends on ANDROID_PMEM
-	default m
 
 config ATMEL_PWM
 	tristate "Atmel AT32/AT91 PWM support"
@@ -519,8 +511,6 @@ source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
 source "drivers/misc/iwmc3200top/Kconfig"
 source "drivers/misc/video_core/720p/Kconfig"
-#ZTE_MODEMCTL_WXW, 20100414, begin, add the modemctl driver module for R750 item
 source "drivers/misc/modemctl/Kconfig"
-#ZTE_MODEMCTL_WXW, 20100414, end, add the modemctl driver module for R750 item
 
 endif # MISC_DEVICES

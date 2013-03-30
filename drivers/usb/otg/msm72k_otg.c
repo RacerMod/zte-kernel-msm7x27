@@ -16,7 +16,6 @@
  *
  */
 
-
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
@@ -86,7 +85,7 @@ static unsigned ulpi_read(struct msm_otg *dev, unsigned reg)
 
 	if (timeout == 0) {
 		printk(KERN_ERR "ulpi_read: timeout %08x\n",
-			readl(USB_ULPI_VIEWPORT));
+				 readl(USB_ULPI_VIEWPORT));
 		spin_unlock_irqrestore(&dev->lock, flags);
 		return 0xffffffff;
 	}
@@ -342,9 +341,9 @@ static void otg_pm_qos_update_latency(struct msm_otg *dev, int vote)
  */
 static void msm_otg_vote_for_pclk_source(struct msm_otg *dev, int vote)
 {
-        if (NULL == dev->pclk_src) {
-              return ;
-        }
+	if (NULL == dev->pclk_src) {
+		return ;
+	}
 	if (!pclk_requires_voting(&dev->otg))
 		return;
 
@@ -1093,6 +1092,7 @@ void msm_otg_set_vbus_state(int online)
 	struct msm_otg *dev = the_msm_otg;
 	printk(KERN_ERR"%s %d online = %d, in_lpm %d\n",
 	       __FUNCTION__, __LINE__, online, atomic_read(&dev->in_lpm));
+
 	if (!atomic_read(&dev->in_lpm) || !online)
 		return;
 
@@ -2326,7 +2326,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	if (dev->pdata->rpc_connect) {
 		ret = dev->pdata->rpc_connect(1);
-		pr_info("%s: rpc_connect(%d)\n", __func__, ret);
+		pr_debug("%s: rpc_connect(%d)\n", __func__, ret);
 		if (ret) {
 			pr_err("%s: rpc connect failed\n", __func__);
 			ret = -ENODEV;
@@ -2358,6 +2358,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		clk_set_rate(dev->pclk_src, INT_MAX);
 		msm_otg_vote_for_pclk_source(dev, 1);
 	}
+
 
 	if (!dev->pdata->pclk_is_hw_gated) {
 		dev->hs_pclk = clk_get(&pdev->dev, "usb_hs_pclk");
@@ -2567,7 +2568,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	ret = otg_debugfs_init(dev);
 	if (ret) {
-		pr_info("%s: otg_debugfs_init failed\n", __func__);
+		pr_err("%s: otg_debugfs_init failed\n", __func__);
 		goto chg_deinit;
 	}
 

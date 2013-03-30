@@ -24,7 +24,8 @@ obj-$(CONFIG_SENSOR_ACCELERATOR) 		+= accelerator.o
 obj-$(CONFIG_SENSORS_BH1721)		+= bh1721.o
 obj-$(CONFIG_SENSORS_TSL2771)	+= taos.o
 obj-$(CONFIG_SENSOR_LIS302DL) 		+= lis302dl.o
-obj-$(CONFIG_NFC_PN544)         += pn544.o 
+obj-$(CONFIG_NFC_PN544)         += pn544.o
+
 ifeq ($(CONFIG_I2C_DEBUG_CHIP),y)
 EXTRA_CFLAGS += -DDEBUG
 endif

@@ -76,9 +76,7 @@ void fix_sync_alarm(void)
 		spin_unlock_irqrestore(&alarm_slock, flags);
 		printk("[alarm] time sync from modem,fix_sync_alarm\n");
 	}
-
 	set_rtc_flag=FROM_MODEM_NETWORK;
-
 }
 
 #endif
@@ -177,12 +175,12 @@ from_old_alarm_set:
 			rv = -EFAULT;
 			goto err1;
 		}
-	#ifdef CONFIG_ZTE_FIX_ALARM_SYNC
+#ifdef CONFIG_ZTE_FIX_ALARM_SYNC
 		printk("[alarm] time sync from APP\n");
 
 		//Setting this flag means sync operation comes from APP 
 		set_rtc_flag = FROM_ANDROID_APP;
-	#endif
+#endif
 		rv = alarm_set_rtc(new_rtc_time);
 		spin_lock_irqsave(&alarm_slock, flags);
 		alarm_pending |= ANDROID_ALARM_TIME_CHANGE_MASK;

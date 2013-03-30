@@ -1055,7 +1055,7 @@ static inline void hci_auth_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 			conn->link_mode |= HCI_LM_AUTH;
 		else
 			conn->sec_level = BT_SECURITY_LOW;
-			
+
 		//modify the problem of PIN or KEY MISSIMG  ZTE_BT_QXX_20101118 begin		
 		if (ev->status == 0x06 && hdev->ssp_mode > 0 &&
                                        conn->ssp_mode > 0 && conn->out) { // PIN or KEY MISSING
@@ -1102,9 +1102,9 @@ static inline void hci_auth_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 			}
 		}
 	}
-	
+
 //modify the problem of PIN or KEY MISSIMG  ZTE_BT_QXX_20101118
-done:   
+done:
 	hci_dev_unlock(hdev);
 }
 

@@ -201,6 +201,7 @@ int suspend_devices_and_enter(suspend_state_t state)
 {
 	int error;
 	gfp_t saved_mask;
+
 	if (!suspend_ops)
 		return -ENOSYS;
 
@@ -293,7 +294,7 @@ int enter_state(suspend_state_t state)
 	error = suspend_devices_and_enter(state);
 
  Finish:
-	pr_info("PM: Finishing wakeup.\n"); //LHX_PM_20110524_01 add log to indicate suspend_finish
+	pr_debug("PM: Finishing wakeup.\n");
 	suspend_finish();
  Unlock:
 	mutex_unlock(&pm_mutex);
