@@ -84,7 +84,7 @@ static int msm_hsusb_init_rpc_ids(unsigned long vers)
 		usb_rpc_ids.get_usb_conf_nv_value	= 99;
 		return 0;
 	} else {
-		pr_info("%s: no matches found for version\n",
+		pr_err("%s: no matches found for version\n",
 			__func__);
 		return -ENODATA;
 	}
@@ -114,7 +114,7 @@ int msm_hsusb_rpc_connect(void)
 {
 
 	if (usb_ep && !IS_ERR(usb_ep)) {
-		pr_info("%s: usb_ep already connected\n", __func__);
+		pr_debug("%s: usb_ep already connected\n", __func__);
 		return 0;
 	}
 
@@ -646,8 +646,6 @@ void hsusb_chg_connected(enum chg_type chgtype)
 EXPORT_SYMBOL(hsusb_chg_connected);
 
 //ruanmeisi_0715 add rpc for read nv
-
-
 int msm_hsusb_get_set_usb_conf_nv_value(uint32_t nv_item,uint32_t value,uint32_t is_write)
 {
         int rc = 0;

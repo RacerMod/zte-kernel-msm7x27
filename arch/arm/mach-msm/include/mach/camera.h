@@ -374,8 +374,8 @@ int msm_flash_ctrl(struct msm_camera_sensor_info *sdata,
  * Add process for flash LED
  * Attention: the value of "rc" is ignored by HAL
  */
-int32_t msm_camera_flash_led_enable(void);
-int32_t msm_camera_flash_led_disable(void);
+	int32_t msm_camera_flash_led_enable(void);
+	int32_t msm_camera_flash_led_disable(void);
 	int msm_strobe_flash_init(struct msm_sync *sync, uint32_t sftype);
 #else
 	static inline int msm_camera_flash_set_led_state(
@@ -394,20 +394,20 @@ int32_t msm_camera_flash_led_disable(void);
  * Add process for flash LED
  * Attention: the value of "rc" is ignored by HAL
  */
-static inline int32_t msm_camera_flash_led_enable(void)
-{
-    return -ENOTSUPP;
-}
+	static inline int32_t msm_camera_flash_led_enable(void)
+	{
+		return -ENOTSUPP;
+	}
 
 /*
  * Commented by YGL_CAM_20100605
  * Add process for flash LED
  * Attention: the value of "rc" is ignored by HAL
  */
-static inline int32_t msm_camera_flash_led_disable(void)
-{
-    return -ENOTSUPP;
-}
+	static inline int32_t msm_camera_flash_led_disable(void)
+	{
+		return -ENOTSUPP;
+	}
 #endif
 
 /* Below functions are added for V4L2 kernel APIs */

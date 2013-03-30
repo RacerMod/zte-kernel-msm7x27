@@ -1,13 +1,3 @@
-
-#========================================================================================
-#when         who        what, where, why                         comment tag
-#--------     ----       -------------------------------------    --------------------------
-#2011-07-15   xym        add cypress CY8CTST241 touchscreen       ZTE_TS_XYM_20110715
-#2011-07-11   xym        add FocalTech new drvier and head file   ZTE_TS_XYM_20110711
-#2011-01-24   zfj        add FocalTech drvier and head file       ZTE_TS_ZFJ_20110124
-#2010-07-03   wly        update firmware                          ZTE_WLY_CRDB00517999
-#2010-03-29   wly        add cypress driver                       ZTE_TOUCH_WLY_001
-#========================================================================================
 #
 # Makefile for the touchscreen drivers.
 #
@@ -48,7 +38,6 @@ obj-$(CONFIG_TOUCHSCREEN_QT602240)	+= qt602240_ts.o
 obj-$(CONFIG_TOUCHSCREEN_S3C2410)	+= s3c2410_ts.o
 obj-$(CONFIG_TOUCHSCREEN_MSM)		+= msm_ts.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI)	+= synaptics_i2c_rmi.o
-obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_3K)          += synaptics_3k.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI_UPDATE)	+= SynaUpgrade.o
 obj-$(CONFIG_TOUCHSCREEN_TOUCHIT213)	+= touchit213.o
 obj-$(CONFIG_TOUCHSCREEN_TOUCHRIGHT)	+= touchright.o
@@ -68,22 +57,5 @@ obj-$(CONFIG_TOUCHSCREEN_W90X900)	+= w90p910_ts.o
 obj-$(CONFIG_TOUCHSCREEN_TPS6507X)	+= tps6507x-ts.o
 obj-$(CONFIG_TOUCHSCREEN_MSM_LEGACY)		+= msm_touch.o
 obj-$(CONFIG_TOUCHSCREEN_CY8C_TS)	+= cy8c_ts.o
-#ZTE_TOUCH_WLY_001,@2010-03-29,begin
-#ZTE_WLY_CRDB00517999, begin
-obj-$(CONFIG_DOWNLOAD_FIRMWARE)		+= issp-firmware.o
-issp-firmware-objs := issp_driver_routines.o issp_routines.o download_main.o
-#ZTE_WLY_CRDB00517999, end
 obj-$(CONFIG_TOUCHSCREEN_CYPRESS_I2C_RMI)	+= cypress_i2c_rmi.o
-#ZTE_TOUCH_WLY_001,@2010-03-29,end
-obj-$(CONFIG_TOUCHSCREEN_MXT224)       += mXT224_atmel.o atmel_config.o
 obj-$(CONFIG_TOUCHSCREEN_CYTTSP_I2C)       += cyttsp-i2c.o
-#ZTE_TS_ZFJ_20110124, begin
-obj-$(CONFIG_TOUCHSCREEN_FOCALTECH)	+= ft5x0x_ts.o
-#ZTE_TS_ZFJ_20110124, end
-#ZTE_TS_XYM_20110711 begin
-obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_NEW)	+= ft5x0x_ts_new.o
-#ZTE_TS_XYM_20110711 end
-#ZTE_TS_XYM_20110715 begin
-obj-$(CONFIG_TOUCHSCREEN_CY8CTST241)		+= cy8ctst241.o
-cy8ctst241-objs := cyttsp_core.o cyttsp_i2c.o
-#ZTE_TS_XYM_20110715 end

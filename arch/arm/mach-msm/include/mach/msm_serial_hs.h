@@ -27,14 +27,6 @@ struct msm_serial_hs_platform_data {
 	int (*gpio_config)(int);
 };
 
-//ZTE_WXW_MODEMCTL_UART_100329, begin, add some interfaces for the UART DM2
-#ifdef CONFIG_MODEMCTL
-#define MODEMCTL_UARTDM1_UNINIT  2
-struct uart_port * msm_hs_dm1_getuartport(void);
-unsigned int msm_hs_dm1_tx_empty(void);
-#endif
-//ZTE_WXW_MODEMCTL_UART_100329, end, add some interfaces for the UART DM2
-
 unsigned int msm_hs_tx_empty(struct uart_port *uport);
 void msm_hs_request_clock_off(struct uart_port *uport);
 void msm_hs_request_clock_on(struct uart_port *uport);

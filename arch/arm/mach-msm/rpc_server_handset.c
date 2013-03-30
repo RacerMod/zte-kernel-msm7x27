@@ -36,10 +36,6 @@ when         who        what, where, why                                        
 #include <mach/board.h>
 #include <mach/rpc_server_handset.h>
 
-#if defined(CONFIG_MACH_R750) /* ZTE_HS_CHYL_01 start*/
-#include <mach/gpio.h>
-#endif /* ZTE_HS_CHYL_01 end*/
-
 #ifdef CONFIG_SCREEN_ON_WITHOUT_KEYOCDE
 extern void msm_batt_force_update(void);
 #endif
@@ -202,19 +198,7 @@ struct hs_cmd_data_type {
 				true - caller context
 				false - hs task context*/
 };
-#if 0
-static const uint32_t hs_key_map[] = {
-	KEY(HS_PWR_K, KEY_POWER),
-	KEY(HS_END_K, KEY_END),
-	KEY(HS_STEREO_HEADSET_K, SW_HEADPHONE_INSERT_W_MIC),
-	KEY(HS_HEADSET_HEADPHONE_K, SW_HEADPHONE_INSERT),
-	KEY(HS_HEADSET_MICROPHONE_K, SW_MICROPHONE_INSERT),
-	KEY(HS_HEADSET_SWITCH_K, KEY_MEDIA),
-	KEY(HS_HEADSET_SWITCH_2_K, KEY_VOLUMEUP),
-	KEY(HS_HEADSET_SWITCH_3_K, KEY_VOLUMEDOWN),
-	0
-};
-#else
+
 static const uint32_t hs_key_map[] = {
 	//let app to diff the long/short power key ZTE_PM_ZHENGCHAO_20110317
 	//KEY(HS_PWR_K, KEY_POWER),
@@ -228,7 +212,6 @@ static const uint32_t hs_key_map[] = {
 	0
 };
 
-#endif
 enum {
 	NO_DEVICE	= 0,
 	MSM_HEADSET	= 1,
@@ -259,62 +242,6 @@ struct msm_handset {
 
 static struct msm_rpc_client *rpc_client;
 static struct msm_handset *hs;
-#if defined(CONFIG_MACH_R750) /* ZTE_HS_CHYL_01 start*/
-#define MSM_GPIO_GSM_EARPHONE_DETECT	    78
-typedef enum
-{
-  GPIO_LOW_LEVEL  = 0,
-  GPIO_HIGH_LEVEL = 1
-} GPIO_ValueType;
-static unsigned modemctl_config_earphonedetect = GPIO_CFG(
-MSM_GPIO_GSM_EARPHONE_DETECT, 0, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_2MA);
-
-static int earphone_gpio_init(void)
-{
-    int rc = 0;
-
-    /* GSM AT_SW pin */
-    rc = gpio_tlmm_config(modemctl_config_earphonedetect ,GPIO_ENABLE);
-	if (rc) 
-	{
-		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",__func__, 
-			MSM_GPIO_GSM_EARPHONE_DETECT, rc);
-		return -EIO;
-	}
-	rc = gpio_request(MSM_GPIO_GSM_EARPHONE_DETECT, "modemctl");
-	if(rc)
-	{
-		printk(KERN_ERR "gpio_request: %d failed!\n", MSM_GPIO_GSM_EARPHONE_DETECT);
-        return rc;
-	}
-    return rc;
-}
-
-static int earphone_detect_insert(void)
-{
-    gpio_set_value(MSM_GPIO_GSM_EARPHONE_DETECT, GPIO_LOW_LEVEL);
-    return (gpio_get_value(MSM_GPIO_GSM_EARPHONE_DETECT));
-}
-
-static int earphone_detect_remove(void)
-{
-	gpio_set_value(MSM_GPIO_GSM_EARPHONE_DETECT, GPIO_HIGH_LEVEL);
-    return (gpio_get_value(MSM_GPIO_GSM_EARPHONE_DETECT));
-}
-
-//don't forward headset state when GSM Modem is unworking, start ZTE_HS_YXS_20100811
-#define MSM_GPIO_GSM_WORKING 16
-#define MODEM_STATE_WORKING 1
-static int ifxgsm_get_gpio_status(unsigned int gpio_id)
-{
-	return (gpio_get_value(gpio_id));
-}
-static int ifxgsm_get_workingstate(void)
-{
-    return ifxgsm_get_gpio_status(MSM_GPIO_GSM_WORKING);
-}
-//don't forward headset state when GSM Modem is unworking, end ZTE_HS_YXS_20100811
-#endif /* ZTE_HS_CHYL_01 end*/
 
 static int hs_find_key(uint32_t hscode)
 {
@@ -328,35 +255,16 @@ static int hs_find_key(uint32_t hscode)
 	}
 	return -1;
 }
+
 static void
 report_headset_switch(struct input_dev *dev, int key, int value)
 {
 	struct msm_handset *hs = input_get_drvdata(dev);
-
-	#if defined(CONFIG_MACH_R750) /* ZTE_HS_CHYL_01 start*/
-	printk("CHYL:report_headset_switch key=%d,value=%d\n",key,value);
-    
-    //don't forward headset state when GSM Modem is unworking, begin ZTE_HS_YXS_20100811
-    #if 0
-    if(value)
-	   	earphone_detect_insert();
-	else
-		earphone_detect_remove();	
-    #else
-    if (MODEM_STATE_WORKING == ifxgsm_get_workingstate())
-    {
-	if(value)
-		earphone_detect_insert();
-	else
-		    earphone_detect_remove();	
-    }
-    #endif
-    //don't forward headset state when GSM Modem is unworking, end ZTE_HS_YXS_20100811
-	#endif /* ZTE_HS_CHYL_01 end*/
 	
 	input_report_switch(dev, key, value);
 	switch_set_state(&hs->sdev, value);
 }
+
 /*compile check
 static void update_state(void)
 {
@@ -374,6 +282,7 @@ static void update_state(void)
 	switch_set_state(&hs->sdev, state);
 }
 */
+
 /*
  * tuple format: (key_code, key_param)
  *
@@ -401,22 +310,22 @@ static void report_hs_key(uint32_t key_code, uint32_t key_parm)
 
 	switch (key) {
 	case KEY_POWER:
-	case KEY_SLEEP://ZTE_KEYMAP_ZX_001 KEY_END-->KEY_SLEEP 142 200911178
+	case KEY_SLEEP: //ZTE_KEYMAP_ZX_001 KEY_END-->KEY_SLEEP 142 200911178
 	case KEY_MEDIA:
-    case KEY_VOLUMEUP:
+	case KEY_VOLUMEUP:
 	case KEY_VOLUMEDOWN:
 	    printk(KERN_ERR "--keycode from A9\n \tkey:%d keycode:%d\n",key,key_code);
 		input_report_key(hs->ipdev, key, (key_code != HS_REL_K));
 		break;
-		
-case KEY_WAKEUP://ZTE_HS_ZHENGCHAO_01
+	case KEY_WAKEUP: //ZTE_HS_ZHENGCHAO_01
 		printk(KERN_ERR "--keycode from A9(charger)\n \tkey:%d keycode:%d\n",key,key_code);
 #ifdef CONFIG_SCREEN_ON_WITHOUT_KEYOCDE
-    		msm_batt_force_update();
+		msm_batt_force_update();
 #else
 		input_report_key(hs->ipdev, key, (key_code != HS_REL_K));
 #endif
 		break;
+
 	case SW_HEADPHONE_INSERT:
 	    printk(KERN_ERR "HEADPHONE_INSERT from A9\n \tkey:%d keycode:%d\n",key,key_code); // ZTE_Audio_CJ_110307
 		report_headset_switch(hs->ipdev, key, (key_code != HS_REL_K));
@@ -751,7 +660,7 @@ static int __devinit hs_probe(struct platform_device *pdev)
 	ipdev->id.product	= 1;
 	ipdev->id.version	= 1;
 
-	input_set_capability(ipdev, EV_KEY, KEY_WAKEUP);//ZTE_HS_ZHENGCHAO_01
+	input_set_capability(ipdev, EV_KEY, KEY_WAKEUP); //ZTE_HS_ZHENGCHAO_01
 	input_set_capability(ipdev, EV_KEY, KEY_MEDIA);
 	input_set_capability(ipdev, EV_KEY, KEY_VOLUMEUP);
 	input_set_capability(ipdev, EV_KEY, KEY_VOLUMEDOWN);
@@ -759,7 +668,7 @@ static int __devinit hs_probe(struct platform_device *pdev)
 	input_set_capability(ipdev, EV_SW, SW_MICROPHONE_INSERT);
 	input_set_capability(ipdev, EV_KEY, KEY_POWER);
 	/*ZTE_HS_ZHUYF_002*/
-	 //disable KEY_END, enable KEY_SLEEP
+	//disable KEY_END, enable KEY_SLEEP
 	//input_set_capability(ipdev, EV_KEY, KEY_END);
 	input_set_capability(ipdev, EV_KEY, KEY_SLEEP);
 	/*end, ZTE_HS_ZHUYF_002*/
@@ -814,9 +723,6 @@ static struct platform_driver hs_driver = {
 
 static int __init hs_init(void)
 {
-	#if defined(CONFIG_MACH_R750) /* ZTE_HS_CHYL_01 start*/
-	earphone_gpio_init();
-	#endif /* ZTE_HS_CHYL_01 end*/
 	return platform_driver_register(&hs_driver);
 }
 late_initcall(hs_init);

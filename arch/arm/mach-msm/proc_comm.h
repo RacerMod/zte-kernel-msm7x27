@@ -13,7 +13,6 @@
  *
  */
 
-
 #ifndef _ARCH_ARM_MACH_MSM_MSM_PROC_COMM_H_
 #define _ARCH_ARM_MACH_MSM_MSM_PROC_COMM_H_
 

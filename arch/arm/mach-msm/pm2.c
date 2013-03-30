@@ -216,6 +216,7 @@ static ssize_t msm_pm_mode_attr_show(
 
 		break;
 	}
+
 	if (ret > 0) {
 		strcat(buf, "\n");
 		ret++;
@@ -1709,9 +1710,7 @@ static int msm_pm_enter(suspend_state_t state)
 
 #ifdef CONFIG_CLOCK_BASED_SLEEP_LIMIT
 	if (ret)
-		{
-			sleep_limit = SLEEP_LIMIT_NO_TCXO_SHUTDOWN;
-		}
+		sleep_limit = SLEEP_LIMIT_NO_TCXO_SHUTDOWN;
 #endif
 	dump_clock_require_tcxo();	//LHX_PM_20110504_02 add code to record which clock is not closed base on BSP 6150
 

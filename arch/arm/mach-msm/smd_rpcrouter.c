@@ -69,9 +69,6 @@ enum {
 static int msm_rpc_connect_timeout_ms;
 module_param_named(connect_timeout, msm_rpc_connect_timeout_ms,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
-//ZTE_LOG_cxh_0224
-//static int smd_rpcrouter_debug_mask;
-
 
 static int smd_rpcrouter_debug_mask = SMEM_LOG;
 module_param_named(debug_mask, smd_rpcrouter_debug_mask,

@@ -138,10 +138,12 @@ obj-$(CONFIG_MACH_MSM8X60_QRDC) += board-qrdc.o
 obj-$(CONFIG_TROUT_H2W) += board-trout-h2w.o
 obj-$(CONFIG_TROUT_BATTCHG) += htc_battery.o
 obj-$(CONFIG_TROUT_PWRSINK) += htc_pwrsink.o
-obj-$(CONFIG_ARCH_MSM7X27) += devices-msm7x27.o  msm_vibrator.o
+obj-$(CONFIG_ARCH_MSM7X27) += devices-msm7x27.o msm_vibrator.o
 obj-$(CONFIG_ARCH_MSM7X30) += board-msm7x30.o devices-msm7x30.o
 obj-$(CONFIG_ARCH_MSM7X30) += clock-7x30.o acpuclock-7x30.o
 obj-$(CONFIG_ARCH_MSM7X25) += board-msm7x27.o devices-msm7x25.o
+
+obj-$(CONFIG_MACH_BLADE) += board-zte-blade-keypad.o board-zte-blade.o
 
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire.o board-sapphire-gpio.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
@@ -170,21 +172,3 @@ endif
 obj-y	+= gpio.o generic_gpio.o
 obj-$(CONFIG_MSM_SLEEP_STATS) += msm_sleep_stats.o
 obj-y	+= tlmm-msm7200a.o
-
-
-# Add ZTE board files and keypad config files
-obj-$(CONFIG_MACH_BLADE) += board-zte-blade-keypad.o board-zte-blade.o
-obj-$(CONFIG_MACH_BLADE2) += board-zte-blade2-keypad.o board-zte-blade2.o
-obj-$(CONFIG_MACH_NOVA) += board-zte-nova-keypad.o board-zte-nova.o
-obj-$(CONFIG_MACH_TURIES) += board-zte-turies-keypad.o board-zte-turies.o
-obj-$(CONFIG_MACH_RACER2) += board-zte-racer2-keypad.o board-zte-racer2.o
-obj-$(CONFIG_MACH_SAILBOAT) += board-zte-sailboat-keypad.o board-zte-sailboat.o
-obj-$(CONFIG_MACH_MOONCAKE) += board-zte-mooncake-keypad.o board-zte-mooncake.o
-obj-$(CONFIG_MACH_V9) += board-zte-v9-keypad.o board-zte-v9.o
-obj-$(CONFIG_MACH_AMIGO) += board-zte-amigo-keypad.o board-zte-amigo.o
-obj-$(CONFIG_MACH_SMOOTH) += board-zte-smooth-keypad.o board-zte-smooth.o
-obj-$(CONFIG_MACH_JOECDMA) += board-zte-joecdma-keypad.o board-zte-joecdma.o
-obj-$(CONFIG_MACH_R750) += board-zte-r750.o board-zte-r750-keypad.o
-obj-$(CONFIG_MACH_SKATE) += board-zte-skate-keypad.o board-zte-skate.o
-obj-$(CONFIG_MACH_ROAMER) += board-zte-roamer-keypad.o board-zte-roamer.o
-obj-$(CONFIG_MACH_BLUETICK) += board-zte-bluetick-keypad.o board-zte-bluetick.o
