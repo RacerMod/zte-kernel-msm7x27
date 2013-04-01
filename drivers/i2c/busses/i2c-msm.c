@@ -33,7 +33,6 @@
 #include <linux/pm_qos_params.h>
 #include <mach/gpio.h>
 
-#define DEBUG 0
 
 enum {
 	I2C_WRITE_DATA          = 0x00,
@@ -115,7 +114,7 @@ msm_i2c_pwr_timer(unsigned long data)
 		msm_i2c_pwr_mgmt(dev, 0);
 }
 
-#if DEBUG
+#ifdef DEBUG
 static void
 dump_status(uint32_t status)
 {
@@ -149,7 +148,7 @@ msm_i2c_interrupt(int irq, void *devid)
 	uint32_t status = readl(dev->base + I2C_STATUS);
 	int err = 0;
 
-#if DEBUG
+#ifdef DEBUG
 	dump_status(status);
 #endif
 
