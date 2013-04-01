@@ -16,7 +16,6 @@
  *
  */
 
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -44,7 +43,7 @@ static int lcdc_remove(struct platform_device *pdev);
 
 static int lcdc_off(struct platform_device *pdev);
 static int lcdc_on(struct platform_device *pdev);
-#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA  
+#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA
 extern u32 LcdPanleID;
 #endif
 static struct platform_device *pdev_list[MSM_FB_MAX_DEV_LIST];
@@ -77,19 +76,18 @@ static int lcdc_off(struct platform_device *pdev)
 
 	clk_disable(pixel_mdp_clk);
 	clk_disable(pixel_lcdc_clk);
-#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA   
-	if(LcdPanleID!=42)	
+
+#ifdef CONFIG_FB_MSM_LCDC_OLED_WVGA
+	if(LcdPanleID!=42)
 	{
 		if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
 			lcdc_pdata->lcdc_power_save(0);
 	}
-#elif defined(CONFIG_FB_MSM_LCDC_SKATE_WVGA)
-
 #else
 	if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
-			lcdc_pdata->lcdc_power_save(0);
+		lcdc_pdata->lcdc_power_save(0);
 #endif
-	
+
 /*	if (lcdc_pdata && lcdc_pdata->lcdc_gpio_config)
 		ret = lcdc_pdata->lcdc_gpio_config(0);*/
 
@@ -136,51 +134,15 @@ static int lcdc_on(struct platform_device *pdev)
 		clk_enable(mfd->ebi1_clk);
 	}
 #endif
-				  
 	mfd = platform_get_drvdata(pdev);
 
 	mfd->fbi->var.pixclock = clk_round_rate(pixel_mdp_clk,
 					mfd->fbi->var.pixclock);
-#ifdef CONFIG_FB_MSM_LCDC_HVGA_ROAMER
-	if (lcdc_pdata && lcdc_pdata->lcdc_power_save)
-		lcdc_pdata->lcdc_power_save(1);
-	if (lcdc_pdata && lcdc_pdata->lcdc_gpio_config)
-		ret = lcdc_pdata->lcdc_gpio_config(1);
-	
-	if(!be_firsttime)
-	{
-	ret = clk_set_rate(pixel_mdp_clk, mfd->fbi->var.pixclock);
-	}
-	else
-	{
+	if(!be_firsttime) {
+		ret = clk_set_rate(pixel_mdp_clk, mfd->fbi->var.pixclock);
+	} else {
 		be_firsttime = false;
 	}
-
-	if (ret) {
-		pr_err("%s: Can't set MDP LCDC pixel clock to rate %u\n",
-			__func__, mfd->fbi->var.pixclock);
-		goto out;
-	}
-
-	clk_enable(pixel_mdp_clk);
-	clk_enable(pixel_lcdc_clk);
-
-	ret = panel_next_on(pdev);
-
-out:
-	return ret;
-
-#else
-
-	if(!be_firsttime)
-	{
-	ret = clk_set_rate(pixel_mdp_clk, mfd->fbi->var.pixclock);
-	}
-	else
-	{
-		be_firsttime = false;
-	}
-
 	if (ret) {
 		pr_err("%s: Can't set MDP LCDC pixel clock to rate %u\n",
 			__func__, mfd->fbi->var.pixclock);
@@ -199,7 +161,6 @@ out:
 
 out:
 	return ret;
-#endif
 }
 
 static int lcdc_probe(struct platform_device *pdev)
@@ -267,7 +228,6 @@ static int lcdc_probe(struct platform_device *pdev)
 	fbi = mfd->fbi;
 	fbi->var.pixclock = clk_round_rate(pixel_mdp_clk,
 					mfd->panel_info.clk_rate);
-
 	fbi->var.left_margin = mfd->panel_info.lcdc.h_back_porch;
 	fbi->var.right_margin = mfd->panel_info.lcdc.h_front_porch;
 	fbi->var.upper_margin = mfd->panel_info.lcdc.v_back_porch;

@@ -1726,43 +1726,11 @@ static ssize_t zte_usb_chg_store_enable(struct device_driver *driver,
 
 static DRIVER_ATTR(usb_chg_enable, S_IRWXUGO, zte_usb_chg_show_enable, zte_usb_chg_store_enable);	//can read write execute
 #endif
-//#if defined(CONFIG_MACH_JOE) || defined(CONFIG_MACH_V9) || defined(CONFIG_MACH_V9)//YINTIANCI_GAUGE_20100926 
-#if defined(CONFIG_TI_GAUGE)
-#define ZTE_GAUGE_FEATURE
-#define ZTE_GAUGE_OPTIMIZE_FEATURE 
-#endif
-#ifdef ZTE_GAUGE_FEATURE
-#define REGADDR_TEMP 		0x06//temperature
-#define REGADDR_AI 		0x14//temperature
-#define REGADDR_VOLT 		0x08//voltage
-#define REGADDR_SOC 		0x2c//state of charge
-extern int bat_read_gauge(int reg,unsigned int* readvalue) ;
-extern int gauge_enabel_it(int flag);
-#define ABSM(a,b)	  ((a)>(b)?((a)-(b)):((b)-(a)))
-#endif
+
 /*get the battery information form SMEM*/
 static int msm_batt_get_batt_chg_status_v1(void)
 {
     struct smem_batt_chg_t *batt_chg_ptr;
-#ifdef ZTE_GAUGE_FEATURE
-    //  static int IT_enable_flag=0;//0:disabled ; 1:enabled
-    unsigned int gaugereadvalue=0;
-    static unsigned int low_power_cnt=0;				//chenchongbao.2011.5.25
-
-#ifdef ZTE_GAUGE_OPTIMIZE_FEATURE
-    unsigned int gauge_voltage=1234;				//
-    unsigned int gauge_capacity=123;				//
-    unsigned int a9_voltage,a9_capacity;				//chenchongbao.2011.5.23
-    static unsigned int a9_old_voltage=0;				//
-    static unsigned int a9_old_capacity=0;				//
-    static unsigned int gauge_old_voltage=3456;		//
-    static unsigned int gauge_old_capacity=33;		// change init value chenchongbao.20110713_1
-    static unsigned int gauge_status_old=0;			//
-    int gauge_current=-1;
-    volatile unsigned int gauge_status=0;//0 bad, 1 good
-#endif
-
-#endif
 
     memset(&rep_batt_chg, 0, sizeof(rep_batt_chg));
 
@@ -1772,181 +1740,33 @@ static int msm_batt_get_batt_chg_status_v1(void)
         printk("%s: share memery read error!\n", __func__);
         return -EIO;
     }
-    
-        rep_batt_chg = *batt_chg_ptr;	/*get the battery information form SMEM*/
-        
-#ifdef ZTE_GAUGE_FEATURE
 
-#ifdef ZTE_GAUGE_OPTIMIZE_FEATURE
-	a9_voltage = rep_batt_chg.battery_voltage;
-	a9_capacity = rep_batt_chg.battery_capacity;
-#endif
+	rep_batt_chg = *batt_chg_ptr;	/*get the battery information form SMEM*/
 
-	 if(!bat_read_gauge(REGADDR_VOLT,&gaugereadvalue))
-        {
-            
-#ifdef ZTE_GAUGE_OPTIMIZE_FEATURE
-           	gauge_status++;
-		gauge_voltage=gaugereadvalue&0xffff;
-		rep_batt_chg.battery_voltage=gauge_voltage;	
-#else
-            rep_batt_chg.battery_voltage=gaugereadvalue&0xffff;
-#endif
-        }
-	 else	//chenchongbao.20110713_1  如果读电量计出错，则采用上次电量计数据
+	DEBUG_MSM_BATTERY("status read ok!base: %d size: %d\n", SMEM_BATT_INFO, sizeof(struct smem_batt_chg_t));
+
+	DEBUG_MSM_BATTERY(KERN_INFO "charger_status = %s, charger_type = %s,"
+	       " batt_status = %s, batt_level = %s,"
+	       " batt_volt = %u, batt_cap = %u, batt_temp = %u, chg_fulled = %d\n",
+	       charger_status[rep_batt_chg.charger_status],
+	       charger_type[rep_batt_chg.charger_type],
+	       battery_status[rep_batt_chg.battery_status],
+	       battery_level[rep_batt_chg.battery_level], 
+	       rep_batt_chg.battery_voltage, 
+	       rep_batt_chg.battery_capacity,
+	       rep_batt_chg.battery_temp, 
+	       rep_batt_chg.chg_fulled);
+
+	/* ZTE_BATTERY_LYJ_004 start*/
+	if (rep_batt_chg.battery_voltage > msm_batt_info.voltage_max_design)
 	{
-		gauge_voltage = gauge_old_voltage;
-		rep_batt_chg.battery_voltage=gauge_voltage;
+		rep_batt_chg.battery_voltage = msm_batt_info.voltage_max_design;
 	}
-	 
-        gaugereadvalue=0;
-        if(!bat_read_gauge(REGADDR_SOC,&gaugereadvalue))
-        {
-#ifdef ZTE_GAUGE_OPTIMIZE_FEATURE
-		gauge_status++;
-            	gauge_capacity=gaugereadvalue&0xff;
-		if(gauge_capacity == 0 ) //chenchongbao.2011.6.7
-		{
-			if (rep_batt_chg.battery_voltage < 3400)	
-			{
-				printk( "gauge_capacity is 0 and battery_voltage is %u\n", rep_batt_chg.battery_voltage);	// 3.3V  //chenchongbao.2011.6.18
-				rep_batt_chg.battery_capacity=0;
-			}
-			//else use arm9 capacity data!
-			else	//chenchongbao.20110713_1	如果没有如此处理，将导致电量由0跳变到ARM9 的容量值比如3% !!!
-			{
-				if(rep_batt_chg.battery_capacity!=0){
-					rep_batt_chg.battery_capacity=1;	
-					gauge_capacity = 1;
-				}
-				//else use arm9's capacity data 0%
-			}
-		}
-		else
-		rep_batt_chg.battery_capacity=gauge_capacity;
-#else
-            rep_batt_chg.battery_capacity=gaugereadvalue&0xff;
-#endif
-        }
-	else	//chenchongbao.20110713_1  如果读电量计出错，则采用上次电量计数据
+		else if (rep_batt_chg.battery_voltage < msm_batt_info.voltage_min_design)
 	{
-		gauge_capacity = gauge_old_capacity;
-		rep_batt_chg.battery_capacity=gauge_capacity;
+		rep_batt_chg.battery_voltage = msm_batt_info.voltage_min_design;
 	}
-	
-        gaugereadvalue=0;
-        if(!bat_read_gauge(REGADDR_AI,&gaugereadvalue))
-               {
-#ifdef ZTE_GAUGE_OPTIMIZE_FEATURE
-           	gauge_status++; 
-            //gaugereadvalue |= 0xFFFF0000;	//chenchongbao.2011.6.7
-            if(gaugereadvalue & 0x8000)		//chenchongbao.20110713_1 解决负值问题
-				gaugereadvalue |= 0xFFFF0000;
-		gauge_current=(int)gaugereadvalue;
-#endif
-        }
-
-#ifdef ZTE_GAUGE_OPTIMIZE_FEATURE
-
-	if( (ABSM(a9_voltage,a9_old_voltage)>5) || (a9_capacity!=a9_old_capacity) || (ABSM(gauge_voltage,gauge_old_voltage)>5) ||	/* chenchongbao.2011.6.7*/
-		(gauge_capacity != gauge_old_capacity) ||  (gauge_status != gauge_status_old)  )
-	{
-		printk(KERN_INFO " gauge_voltage = %d ; arm9_voltage = %d ; gauge_capacity = %d ; arm9_capacity= %d ; gauge_current = %d ; gauge_status= %d\n", 
-			gauge_voltage, a9_voltage, gauge_capacity,a9_capacity, gauge_current, gauge_status);
-	}
-
-	a9_old_voltage = a9_voltage;
-	a9_old_capacity = a9_capacity;
-	gauge_old_voltage = gauge_voltage;
-	gauge_old_capacity = gauge_capacity;
-	gauge_status_old = gauge_status;
-	
-        if((gauge_status && gauge_current==0)  
-                &&(rep_batt_chg.battery_status==0)
-                &&(rep_batt_chg.battery_voltage>=4100)//bat voltage higher than 4100mv
-                &&(rep_batt_chg.charger_status==0 ||rep_batt_chg.charger_status==2))//charger good or weak
-        {
-            if(rep_batt_chg.chg_fulled==0)
-            {
-                rep_batt_chg.chg_fulled=1;
-            }
-            if(rep_batt_chg.battery_capacity!=100)
-            {
-                rep_batt_chg.battery_capacity=100;
-            }
-            //rep_batt_chg.battery_voltage=gauge_voltage;
-        }
-		
-/*			//chenchongbao.2011.5.24
-        else
-        {
-            if(gauge_status==3)
-            {
-                if(ABSM(gauge_voltage,rep_batt_chg.battery_voltage)<400)
-                {
-                    rep_batt_chg.battery_voltage=gauge_voltage;
-                }
-                if((0!= gauge_capacity) && (ABSM(gauge_capacity,rep_batt_chg.battery_capacity)<15))
-                {
-                    rep_batt_chg.battery_capacity=gauge_capacity;
-                }
-        }
-        }
-*/
-
-#endif	//ZTE_GAUGE_OPTIMIZE_FEATURE
-
-
-//chenchongbao.2011.5.25 : 用于处理连接USB 时手机大电流造成的掉电关机反复重启问题!
-
-if(  ( (rep_batt_chg.charger_type == CHARGER_TYPE_USB_PC) ||(rep_batt_chg.charger_type == CHARGER_TYPE_USB_WALL) )
-		//(rep_batt_chg.charger_type != CHARGER_TYPE_NONE)  V9  默认为NONE! 为了避免出现invalid 类型, 因此采用上述两个条件!
-	&& (rep_batt_chg.battery_capacity == 0) && (rep_batt_chg.battery_voltage < 3400) )
-{
-	low_power_cnt ++;
-	if(low_power_cnt > 10)	//10*2=20s
-	{
-		rep_batt_chg.charger_type = CHARGER_TYPE_NONE;	//capacity=0 & no charger , system will power down!
-	}
-}
-else
-{
-	low_power_cnt = 0;
-}
-
-//chenchongbao.2011.5.25 : end
-
-
-#endif	//ZTE_GAUGE_FEATURE
-
-        DEBUG_MSM_BATTERY("status read ok!base: %d size: %d\n", SMEM_BATT_INFO, sizeof(struct smem_batt_chg_t));
-
-        DEBUG_MSM_BATTERY(KERN_INFO "charger_status = %s, charger_type = %s,"
-               " batt_status = %s, batt_level = %s,"
-               " batt_volt = %u, batt_cap = %u, batt_temp = %u, chg_fulled = %d\n",
-               charger_status[rep_batt_chg.charger_status],
-               charger_type[rep_batt_chg.charger_type],
-               battery_status[rep_batt_chg.battery_status],
-               battery_level[rep_batt_chg.battery_level], 
-               rep_batt_chg.battery_voltage, 
-               rep_batt_chg.battery_capacity,
-               rep_batt_chg.battery_temp, 
-               rep_batt_chg.chg_fulled);
-
-#ifndef ZTE_GAUGE_FEATURE
-        /* ZTE_BATTERY_LYJ_004 start*/
-        if (rep_batt_chg.battery_voltage > msm_batt_info.voltage_max_design)
-        {
-//            printk("battery voltage overvoltage: %d\n", rep_batt_chg.battery_voltage);
-            rep_batt_chg.battery_voltage = msm_batt_info.voltage_max_design;
-        }
-        else if (rep_batt_chg.battery_voltage < msm_batt_info.voltage_min_design)
-        {
-//            printk("battery voltage low: %d\n", rep_batt_chg.battery_voltage);
-            rep_batt_chg.battery_voltage = msm_batt_info.voltage_min_design;
-        }
-        /* ZTE_BATTERY_LYJ_004 end*/
-#endif
+	/* ZTE_BATTERY_LYJ_004 end*/
 
     return 0;
 }
@@ -1969,13 +1789,13 @@ void msm_batt_update_psy_status_v1(void)
         msm_batt_info.battery_capacity == rep_batt_chg.battery_capacity && 
         msm_batt_info.battery_temp == rep_batt_chg.battery_temp && 
 #ifdef FEATURE_ZTE_APP_ENABLE_USB_CHARGING
-	(((rep_batt_chg.charger_type == CHARGER_TYPE_USB_WALL || 
-	rep_batt_chg.charger_type == CHARGER_TYPE_USB_PC)&&	   
+	(((rep_batt_chg.charger_type == CHARGER_TYPE_USB_WALL ||
+	rep_batt_chg.charger_type == CHARGER_TYPE_USB_PC)&&
        usb_charger_enable_pre == usb_charger_enable ) ||
-       (rep_batt_chg.charger_type != CHARGER_TYPE_USB_WALL && 
+       (rep_batt_chg.charger_type != CHARGER_TYPE_USB_WALL &&
 	rep_batt_chg.charger_type != CHARGER_TYPE_USB_PC))&&
-#endif        
-        msm_batt_info.chg_fulled == rep_batt_chg.chg_fulled &&  
+#endif
+        msm_batt_info.chg_fulled == rep_batt_chg.chg_fulled &&
         msm_batt_info.charging == rep_batt_chg.charging)
     {
         DEBUG_MSM_BATTERY(KERN_NOTICE "%s() : Got unnecessary event from Modem "

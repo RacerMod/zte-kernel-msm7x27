@@ -13,11 +13,10 @@
  * GNU General Public License for more details.
  *
  */
-/*histstory:
- when       who     what, where, why                                            comment tag
- --------   ----    ---------------------------------------------------    ----------------------------------
- 2009-10-23    hp    mermge vibrator support                                       ZTE_VIBRATOR_HP_01
-
+/*history:
+ when         who   what, where, why          comment tag
+ ----------   ---   -----------------------   ----------------------------------
+ 2009-10-23   hp    merge vibrator support    ZTE_VIBRATOR_HP_01
 */
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
@@ -28,28 +27,19 @@
 
 #include <mach/msm_rpcrouter.h>
 
-#define PM_LIBPROG	  0x30000061
-//ZTE_VIBRATOR_HP_01 2009-10-23 
-//change rpc ver number
-#if 1   //for ZTE Raise 7x27
-#define PM_LIBVERS      0x10001
-//ZTE_VIBRATOR_HP_01 end 
+#define PM_LIBPROG      0x30000061
+#if 1
+#define PM_LIBVERS      0x10001 //change rpc ver
 #else
 #if (CONFIG_MSM_AMSS_VERSION == 6220) || (CONFIG_MSM_AMSS_VERSION == 6225)
-#define PM_LIBVERS	  0xfb837d0b
+#define PM_LIBVERS      0xfb837d0b
 #else
-#define PM_LIBVERS	  MSM_RPC_VERS(1,1)
+#define PM_LIBVERS      MSM_RPC_VERS(1,1)
 #endif
 #endif
 
-//ZTE_VIBRATOR_HP_01 2009-10-23 
-//change rpc proc id 
-#define HTC_PROCEDURE_SET_VIB_ON_OFF	22
-//ZTE_VIBRATOR_HP_01 end 
+#define HTC_PROCEDURE_SET_VIB_ON_OFF	22 //change rpc proc id
 #define PMIC_VIBRATOR_LEVEL	(3000)
-
-//add by stone 2010_0301
-//#define STONE_DEBUG
 
 static struct work_struct vibrator_work;
 static struct hrtimer vibe_timer;
@@ -64,10 +54,6 @@ static void set_pmic_vibrator(int on)
 		uint32_t data;
 	} req;
 
-#ifdef STONE_DEBUG
-        printk("\nstone vib01:0x%x,0x%x\n",on,vib_endpoint); 
-#endif
-
 	if (!vib_endpoint) {
 		vib_endpoint = msm_rpc_connect(PM_LIBPROG, PM_LIBVERS, 0);
 		if (IS_ERR(vib_endpoint)) {
@@ -76,6 +62,7 @@ static void set_pmic_vibrator(int on)
 			return;
 		}
 	}
+
 
 	if (on)
 		req.data = cpu_to_be32(PMIC_VIBRATOR_LEVEL);
@@ -98,21 +85,16 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 	spin_lock_irqsave(&vibe_lock, flags);
 	hrtimer_cancel(&vibe_timer);
 
-#ifdef STONE_DEBUG
-         printk("\nstone vib02:0x%x,0x%x\n",dev,value); 
-#endif
-
 	if (value == 0)
 		vibe_state = 0;
 	else {
-		//ZTE_VIBRATOR_HP_01 2009-10-23
-		//change max duration time to 1000
-		value = (value > 1000 ? 1000 : value);
-		//ZTE_VIBRATOR_HP_01 end
+		value = (value > 1000 ? 1000 : value); //change max duration time to 1000
+
 		vibe_state = 1;
+
 		hrtimer_start(&vibe_timer,
-			ktime_set(value / 1000, (value % 1000) * 1000000),
-			HRTIMER_MODE_REL);
+			      ktime_set(value / 1000, (value % 1000) * 1000000),
+			      HRTIMER_MODE_REL);
 	}
 	spin_unlock_irqrestore(&vibe_lock, flags);
 
@@ -144,10 +126,6 @@ static struct timed_output_dev pmic_vibrator = {
 void __init msm_init_pmic_vibrator(void)
 {
 	INIT_WORK(&vibrator_work, update_vibrator);
-	
-//#ifdef STONE_DEBUG
-         printk("\nstone_20100302 vib00:**************************************\n"); 
-//#endif
 
 
 	spin_lock_init(&vibe_lock);

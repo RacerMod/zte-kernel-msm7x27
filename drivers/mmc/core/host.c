@@ -24,10 +24,6 @@
 #include "core.h"
 #include "host.h"
 
-#ifdef CONFIG_BCM_WIFI
-#define BCM_CARD_DETECT 1
-#endif 
-
 #define cls_dev_to_mmc_host(d)	container_of(d, struct mmc_host, class_dev)
 
 static void mmc_host_classdev_release(struct device *dev)
@@ -179,48 +175,6 @@ static struct attribute_group dev_attr_grp = {
 	.attrs = dev_attrs,
 };
 
-
-#ifdef BCM_CARD_DETECT
-#define MMC_SDIO_SLOT 1
-static struct mmc_host *sdio_host = NULL;
-
-static int select_sdio_host(struct mmc_host *host, int add)
-{
-	if (!add){
-		if ( host == sdio_host ) {
-			sdio_host = NULL;
-			printk("%s: sdio_host cleaned.\n", __FUNCTION__);
-		}
-		return 0;
-	}
-
-	if (host->index == MMC_SDIO_SLOT) {
-		sdio_host = host;
-		printk("%s: sdio_host assigned. (%p)\n", __FUNCTION__, sdio_host);
-	}
-
-	return 0;
-}
-
-struct mmc_host *mmc_get_sdio_host(void)
-{
-	return sdio_host;
-}
-
-void bcm_detect_card(int n)
-{
-	if ( sdio_host ){
-		printk("%s: (%p), call \n", __FUNCTION__, sdio_host);
-		mmc_detect_change(sdio_host, n);
-		}
-	else
-		printk("%s: wifi host is NULL...\n", __FUNCTION__);
-}
-
-EXPORT_SYMBOL(bcm_detect_card);
-#endif
-
-
 /**
  *	mmc_add_host - initialise host hardware
  *	@host: mmc host
@@ -253,14 +207,6 @@ int mmc_add_host(struct mmc_host *host)
 	mmc_start_host(host);
 	register_pm_notifier(&host->pm_notify);
 
-#ifdef BCM_CARD_DETECT
-	select_sdio_host(host, 1);
-
-	printk("shaohua add check host %p \n", host);
-#endif
-
-
-
 	return 0;
 }
 
@@ -276,12 +222,8 @@ EXPORT_SYMBOL(mmc_add_host);
  */
 void mmc_remove_host(struct mmc_host *host)
 {
-
-#ifdef BCM_CARD_DETECT
-	select_sdio_host(host, 0);
-#endif
-
 	unregister_pm_notifier(&host->pm_notify);
+
 	mmc_stop_host(host);
 
 #ifdef CONFIG_DEBUG_FS

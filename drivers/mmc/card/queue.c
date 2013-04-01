@@ -144,13 +144,12 @@ static int mmc_queue_thread(void *d)
 			} while (retries &&
 				(!(cmd.resp[0] & R1_READY_FOR_DATA) ||
 				(R1_CURRENT_STATE(cmd.resp[0]) == 7)));
-			mq->check_status = 0;
-                }
+				mq->check_status = 0;
+		}
 #endif
+
 //ruanmeisi_20100529
-	
-		
-		#ifdef CONFIG_MMC_PERF_PROFILING
+#ifdef CONFIG_MMC_PERF_PROFILING
 		bytes_xfer = blk_rq_bytes(req);
 		if (rq_data_dir(req) == READ) {
 			start = ktime_get();
@@ -168,9 +167,8 @@ static int mmc_queue_thread(void *d)
 				ktime_add(host->perf.wtime_mmcq, diff);
 		}
 #else
-				issue_ret = mq->issue_fn(mq, req);
+			issue_ret = mq->issue_fn(mq, req);
 #endif
-
 		//ruanmeisi
 		if (0 == issue_ret) {
 			int err;

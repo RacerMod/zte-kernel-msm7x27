@@ -2,7 +2,6 @@
 # Wireless LAN device configuration
 #
 
-
 menuconfig WLAN
 	bool "Wireless LAN"
 	depends on !S390
@@ -294,6 +293,5 @@ source "drivers/net/wireless/p54/Kconfig"
 source "drivers/net/wireless/rt2x00/Kconfig"
 source "drivers/net/wireless/wl12xx/Kconfig"
 source "drivers/net/wireless/zd1211rw/Kconfig"
-source "drivers/net/wireless/bcm4319/Kconfig"
 
 endif # WLAN

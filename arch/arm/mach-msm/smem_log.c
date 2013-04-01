@@ -21,7 +21,6 @@
 /* ========================================================================================
 when                who               what, where, why                comment tag
 --------         ----       -----------------------------             --------------------------
-2010-09-25    zhengchao             add dump a9 log support           zhengchao_a9log_20100925
 2010-03-26    caozy                 Add new log support               caozy_log_20100306
 2010-02-08    chenxihua     	    add ram log merge from 726G			    ZTE_LOG_CXH_0208
 ==========================================================================================*/
@@ -45,16 +44,10 @@ when                who               what, where, why                comment ta
 
 #include <mach/msm_iomap.h>
 #include <mach/smem_log.h>
-#include <mach/zte_memlog.h>
+#include "../../../../include/linux/zte_memlog.h"
 
 #include "smd_private.h"
 #include "smd_rpc_sym.h"
-#undef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-
-
-#ifdef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-#include <linux/proc_fs.h>
-#endif
 #include "modem_notifier.h"
 
 #define DEBUG
@@ -149,9 +142,6 @@ static smem_log_info *log_info;
 #define SMEM_LOG_MPROC_OFFSET   SMEM_LOG_ENTRY_OFFSET
 #define SMEM_LOG_STATIC_OFFSET  (SMEM_LOG_MPROC_OFFSET + SMEM_LOG_EVENTS_SIZE)
 #define SMEM_LOG_POWER_OFFSET   (SMEM_LOG_STATIC_OFFSET + SMEM_STATIC_LOG_EVENTS_SIZE)
-#ifdef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-#define SMEM_LOG_STRING_OFFSET  (SMEM_LOG_POWER_OFFSET + SMEM_POWER_LOG_EVENTS_SIZE)//zhengchao
-#endif
 
 static uint32_t log_area_offset[NUM] = {
   SMEM_LOG_MPROC_OFFSET,
@@ -849,68 +839,6 @@ void smem_log_event6_to_static(uint32_t id, uint32_t data1, uint32_t data2,
 				 data1, data2, data3, data4, data5, data6);
 }
 
-#ifdef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-static char *a9_old_log;
-static size_t a9_old_log_size=0x20000;//128k
-
-static ssize_t a9_log_read_old(struct file *file, char __user *buf,
-				    size_t len, loff_t *offset)
-{
-	loff_t pos = *offset;
-	ssize_t count;
-
-	if (!a9_old_log)
-		return 0;
-
-	if (pos >= a9_old_log_size) {
-		if (a9_old_log) {
-			kfree(a9_old_log);//read a9log for only one time
-			a9_old_log = NULL;
-		}
-		return 0;
-	}
-
-	count = min(len, (size_t)(a9_old_log_size - pos));
-	if (copy_to_user(buf, a9_old_log + pos, count))
-		return -EFAULT;
-
-	*offset += count;
-	return count;
-}
-
-static struct file_operations a9_file_ops = {
-	.owner = THIS_MODULE,
-	.read = a9_log_read_old,
-};
-
-int a9_log_init(void)
-{
-	struct proc_dir_entry *entry;
-
-	a9_old_log = kmalloc(a9_old_log_size, GFP_KERNEL);
-	if (a9_old_log == NULL) {
-		printk(KERN_ERR
-		       "a9_log: failed to allocate buffer for old log\n");
-		a9_old_log_size = 0;
-		return 0;
-	}
-	memcpy(a9_old_log,
-	       (void *)((uint32_t)log_info+SMEM_LOG_STRING_OFFSET), a9_old_log_size);
-
-	entry = create_proc_entry("last_a9msg", S_IFREG | S_IRUGO, NULL);
-	if (!entry) {
-		printk(KERN_ERR "ram_console: failed to create proc entry\n");
-		kfree(a9_old_log);
-		a9_old_log = NULL;
-		return 0;
-	}
-
-	entry->proc_fops = &a9_file_ops;
-	entry->size = a9_old_log_size;
-	return 0;
-}
-
-#endif
 static int _smem_log_init(void)
 {
 	int ret;
@@ -976,9 +904,7 @@ static int _smem_log_init(void)
 		return ret;
 
 	init_syms();
-#ifdef ZTE_DUMP_A9LOG//zhengchao_a9log_20100925
-	a9_log_init();
-#endif
+
 	return 0;
 }
 

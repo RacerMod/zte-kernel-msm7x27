@@ -38,7 +38,7 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
-#if defined(CONFIG_ATH_WIFI) || defined(CONFIG_BCM_WIFI)
+#ifdef CONFIG_ATH_WIFI
 #define	ATH_WIFI_SDCC_INDEX		1
 #endif
 
@@ -228,15 +228,8 @@ void mmc_wait_for_req(struct mmc_host *host, struct mmc_request *mrq)
 	mrq->done = mmc_wait_done;
 
 	mmc_start_request(host, mrq);
-#ifdef CONFIG_BCM_WIFI
-    if(!wait_for_completion_timeout(&complete, 5*HZ))
-	{
-		printk("shaohua mmc 5 dec timeout \n");
-		mrq->cmd->error = -1;
-	}
-#else
+
 	wait_for_completion(&complete);
-#endif
 }
 
 EXPORT_SYMBOL(mmc_wait_for_req);
@@ -902,11 +895,7 @@ void mmc_set_timing(struct mmc_host *host, unsigned int timing)
  * If a host does all the power sequencing itself, ignore the
  * initial MMC_POWER_UP stage.
  */
-#ifdef CONFIG_BCM_WIFI
-void mmc_power_up(struct mmc_host *host)
-#else
 static void mmc_power_up(struct mmc_host *host)
-#endif
 {
 	int bit;
 
@@ -947,12 +936,7 @@ static void mmc_power_up(struct mmc_host *host)
 	mmc_delay(10);
 }
 
-#ifdef CONFIG_BCM_WIFI
-EXPORT_SYMBOL(mmc_power_up); 
-void mmc_power_off(struct mmc_host *host)
-#else
 static void mmc_power_off(struct mmc_host *host)
-#endif
 {
 	host->ios.clock = 0;
 	host->ios.vdd = 0;
@@ -965,9 +949,6 @@ static void mmc_power_off(struct mmc_host *host)
 	host->ios.timing = MMC_TIMING_LEGACY;
 	mmc_set_ios(host);
 }
-#ifdef CONFIG_BCM_WIFI
-EXPORT_SYMBOL(mmc_power_off); 
-#endif
 
 /*
  * Cleanup when the last reference to the bus operator is dropped.
@@ -1381,7 +1362,7 @@ int mmc_resume_host(struct mmc_host *host)
 		}
 	}
 	mmc_bus_put(host);
-#if defined(CONFIG_ATH_WIFI) || defined(CONFIG_BCM_WIFI)
+#ifdef CONFIG_ATH_WIFI
 	if (host->index == ATH_WIFI_SDCC_INDEX) {		
 		pr_info("%s: mmc_resume_host in wifi slot skip cmd7\n",   mmc_hostname(host));
 		return err;
@@ -1408,11 +1389,9 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 	struct mmc_host *host = container_of(
 		notify_block, struct mmc_host, pm_notify);
 
-
 	switch (mode) {
 	case PM_HIBERNATION_PREPARE:
 	case PM_SUSPEND_PREPARE:
-
 		if (!host->bus_ops || host->bus_ops->suspend)
 			break;
 
@@ -1422,7 +1401,6 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		mmc_detach_bus(host);
 		mmc_release_host(host);
 		break;
-
 	}
 
 	return 0;
@@ -1450,7 +1428,6 @@ EXPORT_SYMBOL(mmc_set_embedded_sdio_data);
 void power_off_on_host(struct mmc_host *host);
 void mmc_redetect_card(struct mmc_host *host)
 {
-
 	if (NULL == host) {
 		return ;
 	}
@@ -1481,14 +1458,13 @@ void power_off_on_host(struct mmc_host *host)
 EXPORT_SYMBOL(power_off_on_host);
 void power_off_on_host_nolock(struct mmc_host *host)
 {
-
 	mmc_power_off(host);
 	msleep(1000);
 	mmc_power_up(host);
-
 }
 EXPORT_SYMBOL(power_off_on_host_nolock);
 //end
+
 static int __init mmc_init(void)
 {
 	int ret;

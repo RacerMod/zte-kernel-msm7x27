@@ -1054,7 +1054,7 @@ int update_console_cmdline(char *name, int idx, char *name_new, int idx_new, cha
 	return -1;
 }
 
-int console_suspend_enabled = 0;//yintianci change from 1 to 0. ZTE_LOG_YINTIANCI_20100910
+int console_suspend_enabled = 0; //yintianci change from 1 to 0. ZTE_LOG_YINTIANCI_20100910
 EXPORT_SYMBOL(console_suspend_enabled);
 
 static int __init console_suspend_disable(char *str)

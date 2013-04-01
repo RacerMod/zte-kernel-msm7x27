@@ -13,13 +13,10 @@
  *
  */
 /*
-##########################################################################################################################
-#History:
-#when         who         what, where, why                                           comment
-#----------   ----        ---------------------------------------------------        ------------------------------------
-#2011-03-25   zfj         add ROW_SCAN to avoid reporting the key value              ZTE_KB_ZFJ_20110325
-#                         which pressed first when pressing 2 keys in same gpio
-##########################################################################################################################
+ when         who   what, where, why                                        comment
+ ----------   ---   -----------------------------------------------------   -------------------
+ 2011-03-25   zfj   add ROW_SCAN to avoid reporting the key value           ZTE_KB_ZFJ_20110325
+                    which pressed first when pressing 2 keys in same gpio
 */
 
 #include <linux/kernel.h>
@@ -29,8 +26,6 @@
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/wakelock.h>
-
-#define ROW_SCAN 	//ZTE_KB_ZFJ_20110325
 
 struct gpio_kp {
 	struct gpio_event_input_devs *input_devs;
@@ -45,7 +40,6 @@ struct gpio_kp {
 	unsigned int disabled_irq:1;
 	unsigned long keys_pressed[0];
 };
-
 
 static void clear_phantom_key(struct gpio_kp *kp, int out, int in)
 {
@@ -173,7 +167,7 @@ static enum hrtimer_restart gpio_keypad_timer_func(struct hrtimer *timer)
 		}
 		gpio = mi->output_gpios[out];
 		if (gpio_keypad_flags & GPIOKPF_DRIVE_INACTIVE)
-#ifdef ROW_SCAN   //ZTE_KB_ZFJ_20110325
+#ifdef CONFIG_ZTE_PLATFORM
 		{
 			gpio_set_value(gpio, !polarity);
 			gpio_direction_input(gpio);
@@ -189,7 +183,7 @@ static enum hrtimer_restart gpio_keypad_timer_func(struct hrtimer *timer)
 	if (out < mi->noutputs) {
 		gpio = mi->output_gpios[out];
 		if (gpio_keypad_flags & GPIOKPF_DRIVE_INACTIVE)
-#ifdef ROW_SCAN   //ZTE_KB_ZFJ_20110325
+#ifdef CONFIG_ZTE_PLATFORM
 		{
 			gpio_direction_output(gpio, polarity);
 			gpio_set_value(gpio, polarity);
@@ -226,7 +220,7 @@ static enum hrtimer_restart gpio_keypad_timer_func(struct hrtimer *timer)
 	/* No keys are pressed, reenable interrupt */
 	for (out = 0; out < mi->noutputs; out++) {
 		if (gpio_keypad_flags & GPIOKPF_DRIVE_INACTIVE)
-#ifdef ROW_SCAN   //ZTE_KB_ZFJ_20110325
+#ifdef CONFIG_ZTE_PLATFORM
 		{
 			gpio_direction_output(mi->output_gpios[out], polarity);
 			gpio_set_value(mi->output_gpios[out], polarity);
@@ -305,13 +299,13 @@ static int gpio_keypad_request_irqs(struct gpio_kp *kp)
 				"irq %d\n", mi->input_gpios[i], irq);
 			goto err_request_irq_failed;
 		}
-		#ifndef CONFIG_ZTE_PLATFORM
+#ifndef CONFIG_ZTE_PLATFORM
 		err = set_irq_wake(irq, 1);
 		if (err) {
 			pr_err("gpiomatrix: set_irq_wake failed for input %d, "
 				"irq %d\n", mi->input_gpios[i], irq);
 		}
-		#endif
+#endif
 		disable_irq(irq);
 		if (kp->disabled_irq) {
 			kp->disabled_irq = 0;
@@ -363,7 +357,6 @@ int gpio_event_matrix_func(struct gpio_event_input_devs *input_devs,
 		}
 		kp->input_devs = input_devs;
 		kp->keypad_info = mi;
-		//set_bit(EV_KEY, input_dev->evbit);
 		for (i = 0; i < key_count; i++) {
 			unsigned short keyentry = mi->keymap[i];
 			unsigned short keycode = keyentry & MATRIX_KEY_MASK;
@@ -375,9 +368,9 @@ int gpio_event_matrix_func(struct gpio_event_input_devs *input_devs,
 				err = -EINVAL;
 				goto err_bad_keymap;
 			}
-
 			if (keycode && keycode <= KEY_MAX)
-				input_set_capability(input_devs->dev[dev],EV_KEY, keycode);
+				input_set_capability(input_devs->dev[dev],
+							EV_KEY, keycode);
 		}
 
 		for (i = 0; i < mi->noutputs; i++) {
@@ -435,6 +428,7 @@ int gpio_event_matrix_func(struct gpio_event_input_devs *input_devs,
 		if (kp->use_irq)
 			wake_lock(&kp->wake_lock);
 		hrtimer_start(&kp->timer, ktime_set(0, 0), HRTIMER_MODE_REL);
+
 		return 0;
 	}
 

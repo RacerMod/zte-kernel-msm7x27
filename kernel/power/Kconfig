@@ -296,15 +296,14 @@ config ZTE_SUSPEND_WAKEUP_MONITOR
 	depends on PM && WAKELOCK
 	default y
 	---help---
-	  record suspend/wakeup time,the wakeup reason and wakeup source. it also record the active wakelock while suspend.
+	  Record suspend/wakeup time, wakeup reason and wakeup source. It also records the active wakelock while suspend.
 
 config SCREEN_ON_WITHOUT_KEYOCDE
-        bool "(ZTE)screen on without keycode"
-        depends on PM && WAKELOCK
-        default n
-        ---help---
-          Use battery uevent interface to screen on LCD.We use keycode to light the lcd before.THis is not a good idea!
-
+	bool "(ZTE)screen on without keycode"
+	depends on PM && WAKELOCK
+	default n
+	---help---
+	  Use battery uevent interface to turn on LCD. We used keycode to light the lcd before. This is not a good idea!
 
 config PM_RUNTIME
 	bool "Run-time PM core functionality"

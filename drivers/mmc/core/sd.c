@@ -817,6 +817,5 @@ int mmc_sd_reinit_card(struct mmc_host *host)
 		return -1;
 	}
 	return  mmc_sd_init_card(host, host->ocr, host->card);
-	//return  mmc_sd_init_card(host, ocr,  oldcard);
 }
 EXPORT_SYMBOL(mmc_sd_reinit_card);

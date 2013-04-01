@@ -604,32 +604,15 @@ msm_i2c_probe(struct platform_device *pdev)
 		ret = -ENOSYS;
 		goto err_clk_get_failed;
 	}
-	/*ZTE_I2C_ZHYF_001, zhuyufei 2009-10-22*/
-/*
+#ifdef CONFIG_ZTE_PLATFORM
+	printk(KERN_INFO"msm on-chip aux i2c bus is disabled on ZTE boards!\n");
+#else
 	if (!pdata->msm_i2c_config_gpio) {
-	
 		dev_err(&pdev->dev, "config_gpio function not initialized\n");
 		ret = -ENOSYS;
 		goto err_clk_get_failed;
 	}
-*/
-#ifdef CONFIG_ZTE_PLATFORM
-       //  if(machine_is_mooncake())
-       {
-        	printk(KERN_INFO" Warning: msm on-chip aux i2c bus disabled on Board mooncake!\n");
-		/*NULL*/
-       }
-#else
-	{
-		if (!pdata->msm_i2c_config_gpio) {
-		
-			dev_err(&pdev->dev, "config_gpio function not initialized\n");
-			ret = -ENOSYS;
-			goto err_clk_get_failed;
-		}
-	}
 #endif
-	/*end ,ZTE_I2C_ZHYF_001, zhuyufei 2009-10-22*/
 	/* We support frequencies upto FAST Mode(400KHz) */
 	if (pdata->clk_freq <= 0 || pdata->clk_freq > 400000) {
 		dev_err(&pdev->dev, "clock frequency not supported\n");
@@ -690,8 +673,7 @@ msm_i2c_probe(struct platform_device *pdev)
 		goto err_i2c_add_adapter_failed;
 	}
 
-       /*ZTE_I2C_ZHYF_001, zhuyufei 2009-10-22*/
-/*
+#ifndef CONFIG_ZTE_PLATFORM
 	i2c_set_adapdata(&dev->adap_aux, dev);
 	dev->adap_aux.algo = &msm_i2c_algo;
 	strlcpy(dev->adap_aux.name,
@@ -705,30 +687,7 @@ msm_i2c_probe(struct platform_device *pdev)
 		i2c_del_adapter(&dev->adap_pri);
 		goto err_i2c_add_adapter_failed;
 	}
-*/	
-#ifdef CONFIG_ZTE_PLATFORM
-      //  if(machine_is_mooncake())
-       {
-		/*NULL*/
-       }
-#else
-	{
-		i2c_set_adapdata(&dev->adap_aux, dev);
-		dev->adap_aux.algo = &msm_i2c_algo;
-		strlcpy(dev->adap_aux.name,
-			"MSM I2C adapter-AUX",
-			sizeof(dev->adap_aux.name));
-
-		dev->adap_aux.nr = pdev->id + 1;
-		ret = i2c_add_numbered_adapter(&dev->adap_aux);
-		if (ret) {
-			dev_err(&pdev->dev, "auxiliary i2c_add_adapter failed\n");
-			i2c_del_adapter(&dev->adap_pri);
-			goto err_i2c_add_adapter_failed;
-		}
-	}
 #endif
-	/*end ,ZTE_I2C_ZHYF_001, zhuyufei 2009-10-22*/
 	ret = request_irq(dev->irq, msm_i2c_interrupt,
 			IRQF_TRIGGER_RISING, pdev->name, dev);
 	if (ret) {
@@ -748,18 +707,8 @@ msm_i2c_probe(struct platform_device *pdev)
 	dev->clk_state = 0;
 	/* Config GPIOs for primary and secondary lines */
 	pdata->msm_i2c_config_gpio(dev->adap_pri.nr, 1);
-/*
+#ifndef CONFIG_ZTE_PLATFORM
 	pdata->msm_i2c_config_gpio(dev->adap_aux.nr, 1);
-*/
-#ifdef CONFIG_ZTE_PLATFORM
-    //   if(machine_is_mooncake())
-       {
-		/*NULL*/
-       }
-#else
-	{
-		pdata->msm_i2c_config_gpio(dev->adap_aux.nr, 1);
-	}
 #endif
 	clk_disable(dev->clk);
 	setup_timer(&dev->pwr_timer, msm_i2c_pwr_timer, (unsigned long) dev);

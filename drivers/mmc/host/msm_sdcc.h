@@ -14,12 +14,14 @@
 
 #ifndef _MSM_SDCC_H
 #define _MSM_SDCC_H
+
 //ZTE_WIFI_OYHQ_20100714 wifi froyo upgrade begin
 #define MSMSDCC_CRCI_SDC1	6
 #define MSMSDCC_CRCI_SDC2	7
 #define MSMSDCC_CRCI_SDC3	12
 #define MSMSDCC_CRCI_SDC4	13
 //ZTE_WIFI_OYHQ_20100714 wifi froyo upgrade end
+
 #define MMCIPOWER		0x000
 #define MCI_PWR_OFF		0x00
 #define MCI_PWR_UP		0x02
@@ -273,13 +275,12 @@ struct msmsdcc_host {
 	unsigned int	dummy_52_needed;
 	unsigned int	dummy_52_state;
 
-        //ruanmeisi_091224 redetect worker
+	//ruanmeisi_091224 redetect worker
 	struct work_struct	redetect;
 	//ruanmeisi_20100510
 	struct timer_list       command_timer;
 
 	//ruanmeisi_20100618
-
 	struct workqueue_struct   *workqueue;
 	struct delayed_work	cmd_timeout_work;
 	struct mmc_request	*timeout_mrq;

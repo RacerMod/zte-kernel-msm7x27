@@ -279,6 +279,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
+
 	/*
 	 * Inform the card of the voltage
 	 */
@@ -371,9 +372,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 			goto err;
 		}
 		card = oldcard;
-#ifndef CONFIG_ATH_WIFI
 		return 0;
-#endif
 	}
 
 	/*
@@ -515,7 +514,6 @@ static int mmc_sdio_resume(struct mmc_host *host)
 	/* Basic card reinitialization. */
 	mmc_claim_host(host);
 	err = mmc_sdio_init_card(host, host->ocr, host->card);
-
 	if (!err)
 		/* We may have switched to 1-bit mode during suspend. */
 		err = sdio_enable_wide(host->card);

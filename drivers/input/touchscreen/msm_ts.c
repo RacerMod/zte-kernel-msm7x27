@@ -15,21 +15,6 @@
  * TODO:
  *      - Add a timer to simulate a pen_up in case there's a timeout.
  */
- /* 
-====================================================================================
-when         who        what, where, why                               comment tag
---------     ----          -------------------------------------    ------------------
-2010-12-07   wly         modify v9 driver                               ZTE_TS_WLY_CRDB00567837
-2010-11-04   wly         ajust zero pressure                            ZTE_TS_WLY_CRDB00567837
-2010-05-21   wly         modify debounce time                           ZTE_TS_WLY_0521
-2010-03-05   zt          add mod_timer to avoid no rebounce interrupt 	ZTE_TS_ZT_005
-2010-01-28   zt          Modified for new BSP								            ZTE_TS_ZT_004
-2010-01-28   zt		       Change debounce time							              ZTE_TS_ZT_003
-2010-01-28   zt		       Resolve touch no response when power on		    ZTE_TS_ZT_002
-2010-01-28   zt		       Update touchscreen driver.						          ZTE_TS_ZT_001
-                         register two interrupt and delet virtual key.		
-=====================================================================================
-*/
 
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -48,7 +33,7 @@ when         who        what, where, why                               comment t
 #endif
 
 #include <linux/input/msm_ts.h>
-#include <linux/jiffies.h>  //ZTE_TS_ZT_005 @2010-03-05
+
 #define TSSC_CTL			0x100
 #define 	TSSC_CTL_PENUP_IRQ	(1 << 12)
 #define 	TSSC_CTL_DATA_FLAG	(1 << 11)
@@ -72,7 +57,6 @@ when         who        what, where, why                               comment t
 #define TSSC_TEST_1			0x198
 	#define TSSC_TEST_1_EN_GATE_DEBOUNCE (1 << 2)
 #define TSSC_TEST_2			0x19c
-#define TS_PENUP_TIMEOUT_MS 70 // 20  -->  70  ZTE_TS_ZT_005 @2010-03-05
 
 struct msm_ts {
 	struct msm_ts_platform_data	*pdata;
@@ -80,7 +64,7 @@ struct msm_ts {
 	void __iomem			*tssc_base;
 	uint32_t			ts_down:1;
 	struct ts_virt_key		*vkey_down;
-	//struct marimba_tsadc_client	*ts_client;//ZTE_TS_ZT_004 @2010-01-28
+	struct marimba_tsadc_client	*ts_client;
 
 	unsigned int			sample_irq;
 	unsigned int			pen_up_irq;
@@ -89,7 +73,6 @@ struct msm_ts {
 	struct early_suspend		early_suspend;
 #endif
 	struct device			*dev;
-struct timer_list timer;  //wlyZTE_TS_ZT_005 @2010-03-05
 };
 
 static uint32_t msm_tsdebug;
@@ -101,16 +84,13 @@ module_param_named(tsdebug, msm_tsdebug, uint, 0664);
 static void setup_next_sample(struct msm_ts *ts)
 {
 	uint32_t tmp;
-/* ZTE_TS_ZT_003 @2010-01-28 change debounce time, begin*/
-	/* 6ms debounce time ,ZTE_TS_WLY_0521*/
-	tmp = ((7 << 7) | TSSC_CTL_DEBOUNCE_EN | TSSC_CTL_EN_AVERAGE |
+
+	/* 1.2ms debounce time */
+	tmp = ((2 << 7) | TSSC_CTL_DEBOUNCE_EN | TSSC_CTL_EN_AVERAGE |
 	       TSSC_CTL_MODE_MASTER | TSSC_CTL_ENABLE);
-/* ZTE_TS_ZT_003 @2010-01-28 change debounce time, end*/
 	tssc_writel(ts, tmp, TSSC_CTL);
 }
 
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, begin*/
-/*
 static struct ts_virt_key *find_virt_key(struct msm_ts *ts,
 					 struct msm_ts_virtual_keys *vkeys,
 					 uint32_t val)
@@ -125,16 +105,7 @@ static struct ts_virt_key *find_virt_key(struct msm_ts *ts,
 			return &vkeys->keys[i];
 	return NULL;
 }
-*/
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end */
-/*ZTE_TS_ZT_005 @2010-03-05 begin*/
-static void ts_timer(unsigned long arg)
-{
-	struct msm_ts *ts = (struct msm_ts *)arg;
- 	input_report_key(ts->input_dev, BTN_TOUCH, 0);
- 	input_sync(ts->input_dev);
-}
-/*ZTE_TS_ZT_005 @2010-03-05 end*/
+
 
 static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 {
@@ -145,9 +116,7 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	int x, y, z1, z2;
 	int was_down;
 	int down;
-  int z=0;  //wly
 
-  del_timer_sync(&ts->timer);//ZTE_TS_ZT_005 @2010-03-05
 	tssc_ctl = tssc_readl(ts, TSSC_CTL);
 	tssc_status = tssc_readl(ts, TSSC_STATUS);
 	tssc_avg12 = tssc_readl(ts, TSSC_AVG_12);
@@ -159,7 +128,13 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	y = tssc_avg12 >> 16;
 	z1 = tssc_avg34 & 0xffff;
 	z2 = tssc_avg34 >> 16;
-	//ZTE_TS_WLY_20100729,begin
+
+	/* invert the inputs if necessary */
+	if (pdata->inv_x) x = pdata->inv_x - x;
+	if (pdata->inv_y) y = pdata->inv_y - y;
+	if (x < 0) x = 0;
+	if (y < 0) y = 0;
+
 	down = !(tssc_ctl & TSSC_CTL_PENUP_IRQ);
 	was_down = ts->ts_down;
 	ts->ts_down = down;
@@ -171,37 +146,7 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 	if (msm_tsdebug & 2)
 		printk("%s: down=%d, x=%d, y=%d, z1=%d, z2=%d, status %x\n",
 		       __func__, down, x, y, z1, z2, tssc_status);
-	if (down) 
-		{
-		//if ( 0 == z1 ) return IRQ_HANDLED;
-			//z = ( ( 2 * z2 - 2 * z1 - 3) * x) / ( 2 * z1 + 3);
-			z = ( ( z2 - z1 - 2)*x) / ( z1 + 2 );
-			z = ( 2500 - z ) * 1000 / ( 2500 - 900 );
-			//printk("wly: msm_ts_irq,z=%d,z1=%d,z2=%d,x=%d\n",z,z1,z2,x);
-			if( z<=0 ) z = 255;
-		}
-	//ZTE_TS_WLY_20100729,end
-	/* invert the inputs if necessary */
 
-	if (pdata->inv_x) x = pdata->inv_x - x;
-	if (pdata->inv_y) y = pdata->inv_y - y;
-	//huangjinyu add for calibration
-
-	
-	//ZTE_TS_CRDB00517999,END
-	if (x < 0) x = 0;
-	if (y < 0) y = 0;
-		
-#if defined(CONFIG_MACH_MOONCAKE)
-  //x = x*240/916;
-  //y = y*320/832;
-#elif defined(CONFIG_MACH_V9)
-  //x=x*480/13/73;
-  //y=y*800/6/149;
-#endif
-  
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, begin*/
-/*
 	if (!was_down && down) {
 		struct ts_virt_key *vkey = NULL;
 
@@ -231,23 +176,18 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 		}
 		return IRQ_HANDLED;
 	}
-	*/
-	/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end*/
 
 	if (down) {
-		//printk("huangjinyu x= %d ,y= %d \n",x,y);
 		input_report_abs(ts->input_dev, ABS_X, x);
 		input_report_abs(ts->input_dev, ABS_Y, y);
-			input_report_abs(ts->input_dev, ABS_PRESSURE, z);
+		input_report_abs(ts->input_dev, ABS_PRESSURE, z1);
 	}
 	input_report_key(ts->input_dev, BTN_TOUCH, down);
 	input_sync(ts->input_dev);
 
-	if (30 == irq)mod_timer(&ts->timer,jiffies + msecs_to_jiffies(TS_PENUP_TIMEOUT_MS));//ZTE_TS_ZT_005 @2010-03-05
 	return IRQ_HANDLED;
 }
-/* ZTE_TS_ZT_001 @2010-01-28 delete for compile err, begin*/
-/*
+
 static void dump_tssc_regs(struct msm_ts *ts)
 {
 #define __dump_tssc_reg(r) \
@@ -262,12 +202,9 @@ static void dump_tssc_regs(struct msm_ts *ts)
 	__dump_tssc_reg(TSSC_TEST_1);
 #undef __dump_tssc_reg
 }
-*/
-/* ZTE_TS_ZT_001 @2010-01-28 delete for compile err, end*/
+
 static int __devinit msm_ts_hw_init(struct msm_ts *ts)
 {
-/* ZTE_TS_ZT_002 @2010-01-28 resolve touch no response when power on , start*/
-#if 0 //wly
 	uint32_t tmp;
 
 	/* Enable the register clock to tssc so we can configure it. */
@@ -293,8 +230,7 @@ static int __devinit msm_ts_hw_init(struct msm_ts *ts)
 	/* Enable gating logic to fix the timing delays caused because of
 	 * enabling debounce logic */
 	tssc_writel(ts, TSSC_TEST_1_EN_GATE_DEBOUNCE, TSSC_TEST_1);
-#endif
-/* ZTE_TS_ZT_002 @2010-01-28 resolve touch no response when power on , start*/
+
 	setup_next_sample(ts);
 
 	return 0;
@@ -372,54 +308,6 @@ static void msm_ts_late_resume(struct early_suspend *h)
 }
 #endif
 
-#if defined(CONFIG_TOUCHSCREEN_VIRTUAL_KEYS)
-#define virtualkeys virtualkeys.msm-touchscreen
-#if defined(CONFIG_MACH_MOONCAKE)
-static const char ts_keys_size[] = "0x01:102:40:340:60:50:0x01:139:120:340:60:50:0x01:158:200:340:60:50";
-#elif defined(CONFIG_MACH_V9)
-static const char ts_keys_size[] = "0x01:102:70:850:60:50:0x01:139:230:850:60:50:0x01:158:390:850:60:50";
-#endif
-
-
-
-static ssize_t virtualkeys_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	sprintf(buf,"%s\n",ts_keys_size);
-	printk("wly:%s\n",__FUNCTION__);
-    return strlen(ts_keys_size)+2;
-}
-static DEVICE_ATTR(virtualkeys, 0444, virtualkeys_show, NULL);
-extern struct kobject *android_touch_kobj;
-static struct kobject * virtual_key_kobj;
-static int ts_key_report_init(void)
-{
-	int ret;
-	virtual_key_kobj = kobject_get(android_touch_kobj);
-	if (virtual_key_kobj == NULL) {
-		virtual_key_kobj = kobject_create_and_add("board_properties", NULL);
-		if (virtual_key_kobj == NULL) {
-			printk(KERN_ERR "%s: subsystem_register failed\n", __func__);
-			ret = -ENOMEM;
-			return ret;
-		}
-	}
-	ret = sysfs_create_file(virtual_key_kobj, &dev_attr_virtualkeys.attr);
-	if (ret) {
-		printk(KERN_ERR "%s: sysfs_create_file failed\n", __func__);
-		return ret;
-	}
-
-	return 0;
-}
-
-/*static void ts_key_report_init_deinit(void)
-{
-	sysfs_remove_file(virtual_key_kobj, &dev_attr_virtualkeys.attr);
-	kobject_del(virtual_key_kobj);
-}*/
-
-#endif	//xiayc
 
 static int __devinit msm_ts_probe(struct platform_device *pdev)
 {
@@ -429,10 +317,10 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	struct resource *irq1_res;
 	struct resource *irq2_res;
 	int err = 0;
-	/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, begin*/
-	/*int i;*/
-	/*struct marimba_tsadc_client *ts_client;*/
-    /* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end*/
+	int i;
+	struct marimba_tsadc_client *ts_client;
+
+	printk("%s\n", __func__);
 
 	tssc_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "tssc");
 	irq1_res = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "tssc1");
@@ -466,7 +354,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto err_ioremap_tssc;
 	}
-#if 0//ZTE_TS_ZT_004 @2010-01-28
+
 	ts_client = marimba_tsadc_register(pdev, 1);
 	if (IS_ERR(ts_client)) {
 		pr_err("%s: Unable to register with TSADC\n", __func__);
@@ -481,7 +369,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 		err = -EINVAL;
 		goto err_start_tsadc;
 	}
-#endif
+
 	ts->input_dev = input_allocate_device();
 	if (ts->input_dev == NULL) {
 		pr_err("failed to allocate touchscreen input device\n");
@@ -495,13 +383,6 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 
 	input_set_capability(ts->input_dev, EV_KEY, BTN_TOUCH);
 	set_bit(EV_ABS, ts->input_dev->evbit);
-	
-#if defined(CONFIG_TOUCHSCREEN_VIRTUAL_KEYS)
-	set_bit(EV_KEY, ts->input_dev->evbit);
-	set_bit(KEY_HOME, ts->input_dev->keybit);
-	set_bit(KEY_MENU, ts->input_dev->keybit);
-	set_bit(KEY_BACK, ts->input_dev->keybit);
-#endif
 
 	input_set_abs_params(ts->input_dev, ABS_X, pdata->min_x, pdata->max_x,
 			     0, 0);
@@ -509,23 +390,20 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 			     0, 0);
 	input_set_abs_params(ts->input_dev, ABS_PRESSURE, pdata->min_press,
 			     pdata->max_press, 0, 0);
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end*/
-/*
+
 	for (i = 0; pdata->vkeys_x && (i < pdata->vkeys_x->num_keys); ++i)
 		input_set_capability(ts->input_dev, EV_KEY,
 				     pdata->vkeys_x->keys[i].key);
 	for (i = 0; pdata->vkeys_y && (i < pdata->vkeys_y->num_keys); ++i)
 		input_set_capability(ts->input_dev, EV_KEY,
 				     pdata->vkeys_y->keys[i].key);
-*/
-/* ZTE_TS_ZT_001 @2010-01-28 for virtual key not used in driver, end*/
+
 	err = input_register_device(ts->input_dev);
 	if (err != 0) {
 		pr_err("%s: failed to register input device\n", __func__);
 		goto err_input_dev_reg;
 	}
 
-  setup_timer(&ts->timer, ts_timer, (unsigned long)ts);  //ZTE_TS_ZT_005 @2010-03-05
 	msm_ts_hw_init(ts);
 
 	err = request_irq(ts->sample_irq, msm_ts_irq,
@@ -557,11 +435,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, pdata->can_wakeup);
 	pr_info("%s: tssc_base=%p irq1=%d irq2=%d\n", __func__,
 		ts->tssc_base, (int)ts->sample_irq, (int)ts->pen_up_irq);
-//xiayc
-#if defined(CONFIG_TOUCHSCREEN_VIRTUAL_KEYS)
-	ts_key_report_init();
-#endif
-//	dump_tssc_regs(ts);
+	dump_tssc_regs(ts);
 	return 0;
 
 err_request_irq2:
@@ -576,19 +450,17 @@ err_input_dev_reg:
 	input_free_device(ts->input_dev);
 
 err_alloc_input_dev:
-#if 0//ZTE_TS_ZT_004 @2010-01-28
 err_start_tsadc:
 	marimba_tsadc_unregister(ts->ts_client);
 
 err_tsadc_register:
-#endif
 	iounmap(ts->tssc_base);
 
 err_ioremap_tssc:
 	kfree(ts);
 	return err;
 }
-#if 0//ZTE_TS_ZT_004 @2010-01-28
+
 static int __devexit msm_ts_remove(struct platform_device *pdev)
 {
 	struct msm_ts *ts = platform_get_drvdata(pdev);
@@ -607,7 +479,7 @@ static int __devexit msm_ts_remove(struct platform_device *pdev)
 
 	return 0;
 }
-#endif
+
 static struct platform_driver msm_touchscreen_driver = {
 	.driver = {
 		.name = "msm_touchscreen",
@@ -617,7 +489,7 @@ static struct platform_driver msm_touchscreen_driver = {
 #endif
 	},
 	.probe		= msm_ts_probe,
-	//.remove = __devexit_p(msm_ts_remove),//ZTE_TS_ZT_004 @2010-01-28
+	.remove		= __devexit_p(msm_ts_remove),
 };
 
 static int __init msm_ts_init(void)

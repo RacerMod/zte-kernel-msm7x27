@@ -37,11 +37,10 @@ module_param_named(earlysuspend_level, debug_earlysuspend_level, int, S_IRUGO | 
 #endif
 
 //ruanmeisi
-
 void enqueue_sync_work(signed long timeout);
 void abort_sync_wait(void);
 //end
-	
+
 static DEFINE_MUTEX(early_suspend_lock);
 static LIST_HEAD(early_suspend_handlers);
 static void early_suspend(struct work_struct *work);
@@ -116,13 +115,13 @@ static void early_suspend(struct work_struct *work)
 	list_for_each_entry(pos, &early_suspend_handlers, link) {
 		if (pos->suspend != NULL)
 		{
-			#ifdef FEATURE_ZTE_EARLYSUSPEND_DEBUG
+#ifdef FEATURE_ZTE_EARLYSUSPEND_DEBUG
 			if(debug_earlysuspend_level <= pos->level)
 			{
 				pr_info("NO early_suspend: handlers level = %d \n",pos->level);
 				break;
 			}
-			#endif
+#endif
 			if (debug_mask & DEBUG_SUSPEND)
                         	pr_info("early_suspend: handlers level=%d\n", pos->level);
 			pos->suspend(pos);
@@ -135,15 +134,13 @@ static void early_suspend(struct work_struct *work)
 
 	//ruanmeisi
 	//sys_sync();
-
 	enqueue_sync_work(10 * HZ);
 	//end
 
 	//ZTE_PM_ZHENGCHAO_20100402_01
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("early_suspend: sync end\n");
-	zte_update_lateresume_2_earlysuspend_time(false);//LHX_PM_20110411_01,update earlysuspend time
-
+	zte_update_lateresume_2_earlysuspend_time(false); //LHX_PM_20110411_01,update earlysuspend time
 abort:
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED_AND_SUSPENDED)
@@ -220,9 +217,9 @@ void request_suspend_state(suspend_state_t new_state)
 	    abort_sync_wait();
 	    //end
 	} else {
-	      //ruanmeisi
-	      abort_sync_wait();
-	      //end
+		//ruanmeisi
+		abort_sync_wait();
+		//end
 	}
 	pr_info("[early_suspend] wq status=%d \n",wq_status);
 	requested_suspend_state = new_state;

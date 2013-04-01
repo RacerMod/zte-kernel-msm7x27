@@ -30,7 +30,7 @@ struct ram_console_buffer {
 	uint32_t    sig;
 	uint32_t    start;
 	uint32_t    size;
-	uint32_t    is_busy;//ZTE_BOOT_HUANGYANJUN_20110228_01
+	uint32_t    is_busy; //ZTE_BOOT_HUANGYANJUN_20110228_01
 	uint8_t     data[0];
 };
 
@@ -300,7 +300,7 @@ static int __init ram_console_init(struct ram_console_buffer *buffer,
 	buffer->sig = RAM_CONSOLE_SIG;
 	buffer->start = 0;
 	buffer->size = 0;
-	buffer->is_busy = 0;//ZTE_BOOT_HUANGYANJUN_20110228_01
+	buffer->is_busy = 0; //ZTE_BOOT_HUANGYANJUN_20110228_01
 
 	register_console(&ram_console);
 #ifdef CONFIG_ANDROID_RAM_CONSOLE_ENABLE_VERBOSE

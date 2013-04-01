@@ -70,7 +70,6 @@ struct mmc_blk_data {
 #define MAX_ERR_TIMES    20
 #define MAX_RETINIT_TIMES    1
 
-
 int mmc_sd_reinit_card(struct mmc_host *host);
 void power_off_on_host_nolock(struct mmc_host *host);
 
@@ -78,6 +77,7 @@ static inline void inc_err_times(struct mmc_blk_data *md)
 {
 	md->err_times++;
 }
+
 static inline void clear_err_times(struct mmc_blk_data *md)
 {
 	md->err_times = 0;
@@ -97,9 +97,7 @@ static inline int get_reinit_times(struct mmc_blk_data *md)
 {
 	return md->reinit_times;
 }
-
 //end
-
 
 static DEFINE_MUTEX(open_lock);
 
@@ -274,6 +272,7 @@ static u32 get_card_status(struct mmc_card *card, struct request *req)
 		       req->rq_disk->disk_name, err);
 	return cmd.resp[0];
 }
+
 void power_off_on_host(struct mmc_host *host);
 
 static int
@@ -311,9 +310,8 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 	int ret = 1, disable_multi = 0;
 	//ruanmeisi_20100618
 	int sd_in_programm_state = 0;
-		
+
 	int reinit_times = get_reinit_times(md);
-	
 
 	if (get_err_times(md) > MAX_ERR_TIMES) {
 		spin_lock_irq(&md->lock);
@@ -432,7 +430,7 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 			err = mmc_send_status(mq->card, NULL);
 			if (err) {
 				//sdcard is removed?
-			      printk(KERN_ERR "rms:%s: (%d) the card is removed? %d %s\n",
+				printk(KERN_ERR "rms:%s: (%d) the card is removed? %d %s\n",
 				       __func__, err, brq.data.blocks,
 				       rq_data_dir(req) == READ?"read":"write");
 				goto cmd_err;
@@ -440,14 +438,12 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 			//ruanmeisi_20100902
 				inc_err_times(md);
 				if (get_err_times(md) > MAX_ERR_TIMES) {
-				    
-				       printk(KERN_ERR "rms:%s:%d:read/write:%d %s\n",
+					printk(KERN_ERR "rms:%s:%d:read/write:%d %s\n",
 					      __func__, get_err_times(md),
 					      brq.data.blocks,
 					      rq_data_dir(req) == READ?"read":"write");
-				       goto cmd_err;
+					goto cmd_err;
 				}
-				
 
 				printk(KERN_ERR "rms: err times %d\n",
 						       get_err_times(md));
@@ -462,7 +458,6 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 						mmc_sd_reinit_card(card->host);
 						continue;
 					}
-						
 				}
 			}
 			//end
@@ -479,7 +474,7 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 			clear_err_times(md);
 			disable_multi = 0;
 		} else {
-		//ruanmeisi
+			//ruanmeisi
 			clear_err_times(md);
 		}
 
@@ -524,7 +519,6 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 				}
 				//ruanmeisi_20100618
 				if(time_after(jiffies, last_jiffies + 10 * HZ)) {
-
 					printk(KERN_ERR "rms:%s: card in programm state: %ld jiffies\n",
 					       req->rq_disk->disk_name,
 					       jiffies - last_jiffies);
@@ -539,9 +533,7 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 				 */
 			} while (!(cmd.resp[0] & R1_READY_FOR_DATA) ||
 				(R1_CURRENT_STATE(cmd.resp[0]) == 7));
-			
 
-			
 #if 0
 			if (cmd.resp[0] & ~0x00000900)
 				printk(KERN_ERR "%s: status = %08x\n",
@@ -611,6 +603,7 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 	if (sd_in_programm_state) {
 		power_off_on_host(card->host);
 	}
+
 	return 0;
 }
 
@@ -748,6 +741,7 @@ static int mmc_blk_probe(struct mmc_card *card)
 
 	return err;
 }
+
 int remove_all_req(struct mmc_queue *mq);
 
 static void mmc_blk_remove(struct mmc_card *card)
@@ -764,7 +758,7 @@ static void mmc_blk_remove(struct mmc_card *card)
 		//end
 		queue_flag_set_unlocked(QUEUE_FLAG_DEAD, 
 		 			md->queue.queue); 
-		
+
 		del_gendisk(md->disk);
 
 		/* Then flush out any already in there */
@@ -816,10 +810,10 @@ static struct mmc_driver mmc_driver = {
 	.resume		= mmc_blk_resume,
 };
 
-
 static int __init mmc_blk_init(void)
 {
 	int res;
+
 	res = register_blkdev(MMC_BLOCK_MAJOR, "mmc");
 	if (res)
 		goto out;

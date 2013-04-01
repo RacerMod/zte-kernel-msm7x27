@@ -32,7 +32,6 @@ config ZTE_NLED_BLINK_WHILE_APP_SUSPEND
 	help
 	  Modem will blink NLEDs after APP sleep if need
 
-
 config LEDS_ATMEL_PWM
 	tristate "LED Support using Atmel PWM outputs"
 	depends on ATMEL_PWM

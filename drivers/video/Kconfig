@@ -2381,60 +2381,12 @@ config FB_MSM_LCDC_TOSHIBA_WVGA_PT
 	bool
 	select FB_MSM_LCDC_PANEL
 	default n
-config  FB_MSM_LCDC_HIMAX_WQVGA727
-	bool 
-	select FB_MSM_LCDC_PANEL
-config  FB_MSM_LCDC_HIMAX_WQVGA722
-	bool 
-	select FB_MSM_LCDC_PANEL
-config  FB_MSM_LCDC_SKATE_WVGA
-	bool 
-	select FB_MSM_LCDC_PANEL
-config  FB_MSM_LCDC_LEAD_QVGA
-	bool
-	select FB_MSM_LCDC_PANEL
-	default n
-config  FB_MSM_LCDC_HIMAX_QVGA
-	bool
-	select FB_MSM_LCDC_PANEL
-	default n
-config  FB_MSM_LCDC_SAMSUNG_QVGA
-	bool
-	select FB_MSM_LCDC_PANEL
-	default n
-config  FB_MSM_LCDC_OLED_WVGA
-	bool
-	select FB_MSM_LCDC_PANEL
-	default n
-	
-config  FB_MSM_LCDC_V9_WVGA
-	bool
-	select FB_MSM_LCDC_PANEL
-	default n
-	
-config  FB_MSM_LCDC_BLADE2_WVGA
-	bool
-	select FB_MSM_LCDC_PANEL
-	default n
-	
-config FB_MSM_LCDC_LEAD_HVGA
+
+config FB_MSM_LCDC_OLED_WVGA
 	bool
 	select FB_MSM_LCDC_PANEL
 	default n
 
-config FB_MSM_LCDC_NOVA_HVGA
-	bool
-	select FB_MSM_LCDC_PANEL
-	default n
-	
-config FB_MSM_LCDC_SAILBOAT_HVGA
-	bool
-	select FB_MSM_LCDC_PANEL
-	default n
-config FB_MSM_LCDC_HIMAX_QVGA725A
-	bool
-	select FB_MSM_LCDC_PANEL
-	default n
 config FB_MSM_LCDC_SHARP_WVGA_PT
 	bool
 	select FB_MSM_LCDC_PANEL
@@ -2460,13 +2412,7 @@ config FB_MSM_MIPI_NOVATEK_CMD_QHD_PT
 	select FB_MSM_MIPI_DSI_NOVATEK
 	default n
 
-config  FB_MSM_LCDC_HVGA_ROAMER
-	bool 
-	select FB_MSM_LCDC_PANEL
-
-
 menu "LCD Panel"
-#	default FB_MSM_MDDI_AUTO_DETECT
 
 config FB_MSM_LCDC_PRISM_WVGA_PANEL
 	depends on FB_MSM_LCDC_HW
@@ -2488,49 +2434,6 @@ config FB_MSM_LCDC_GORDON_VGA_PANEL
 	select FB_MSM_LCDC_GORDON_VGA
 	---help---
 	  Support for LCDC Gordon VGA (480x640) panel
-config FB_MSM_LCDC_HIMAX_WQVGA_PANEL727
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC HiMax WQVGA Panel Joe"
-	select FB_MSM_LCDC_HIMAX_WQVGA727
-	---help---
-	  Support for LCDC HiMax WQVGA (400x240) panel
-config FB_MSM_LCDC_HIMAX_WQVGA_PANEL722
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC HiMax WQVGA Panel Raise"
-	select FB_MSM_LCDC_HIMAX_WQVGA722
-	---help---
-	  Support for LCDC HiMax WQVGA (400x240) panel
-config FB_MSM_LCDC_SKATE_WVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC skate WVGA Panel"
-	select FB_MSM_LCDC_SKATE_WVGA
-	---help---
-	  Support for LCDC skate WVGA (480x800) panel
-config FB_MSM_LCDC_LEAD_QVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC Lead QVGA Panel"
-	select FB_MSM_LCDC_LEAD_QVGA
-	---help---
-	  Support for LCDC Lead QVGA (240x320) panel
-
-config FB_MSM_LCDC_HIMAX_QVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC HIMAX QVGA Panel"
-	select FB_MSM_LCDC_HIMAX_QVGA
-	---help---
-	  Support for LCDC HIMAX QVGA (240x320) panel
-config FB_MSM_LCDC_HVGA_ROAMER_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC HVGA ROAMER Panel"
-	select FB_MSM_LCDC_HVGA_ROAMER
-	---help---
-	  Support for LCDC HVGA ROAMER (320x480) panel
-config FB_MSM_LCDC_SAMSUNG_QVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC SAMSUNG QVGA Panel"
-	select FB_MSM_LCDC_SAMSUNG_QVGA
-	---help---
-	  Support for LCDC SAMSUNG QVGA (240x320) panel
 
 config FB_MSM_LCDC_OLED_WVGA_PANEL
 	depends on FB_MSM_LCDC_HW
@@ -2538,41 +2441,6 @@ config FB_MSM_LCDC_OLED_WVGA_PANEL
 	select FB_MSM_LCDC_OLED_WVGA
 	---help---
 	  Support for LCDC Samsung Oled WVGA (480x800) panel
-
-config FB_MSM_LCDC_V9_WVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC V9 WVGA Panel"
-	select FB_MSM_LCDC_V9_WVGA
-	---help---
-	  Support for LCDC V9 WVGA (800x480) panel
-	  
-config FB_MSM_LCDC_BLADE2_WVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC BLADE2 WVGA Panel"
-	select FB_MSM_LCDC_BLADE2_WVGA
-	---help---
-	  Support for LCDC BLADE2 WVGA (800x480) panel
-	  
-config FB_MSM_LCDC_LEAD_HVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC LEAD HVGA Panel"
-	select FB_MSM_LCDC_LEAD_HVGA
-	---help---
-	  Support for LCDC LEAD TFT HVGA (320x480) panel
-
-config FB_MSM_LCDC_NOVA_HVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC NOVA HVGA Panel"
-	select FB_MSM_LCDC_NOVA_HVGA
-	---help---
-	  Support for LCDC NOVA TFT HVGA (320x480) panel
-	  
-config FB_MSM_LCDC_SAILBOAT_HVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC SAILBOAT HVGA Panel"
-	select FB_MSM_LCDC_SAILBOAT_HVGA
-	---help---
-	  Support for LCDC SAILBOAT TFT HVGA (320x480) panel
 
 config FB_MSM_LCDC_TOSHIBA_WVGA_PT_PANEL
 	depends on FB_MSM_LCDC_HW
@@ -2587,12 +2455,7 @@ config FB_MSM_LCDC_SHARP_WVGA_PT_PANEL
 	select FB_MSM_LCDC_SHARP_WVGA_PT
 	---help---
 	  Support for LCDC Sharp WVGA PT (480x800) panel
-config FB_MSM_LCDC_HIMAX_QVGA_725A_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC HIMAX QVGA Panel 725A"
-	select FB_MSM_LCDC_HIMAX_QVGA725A
-	---help---
-	Support for LCDC Himax qvga (320x240) panel
+
 config FB_MSM_TRY_MDDI_CATCH_LCDC_PRISM
 	depends on FB_MSM_LCDC_HW
 	bool "MDDI Panel Auto Detect + LCDC Prism WVGA"

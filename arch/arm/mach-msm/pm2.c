@@ -70,7 +70,7 @@
 #include <mach/gpio.h>
 #include <asm/mach/irq.h>
 #endif
-#include <mach/zte_memlog.h> /* SDUPDATE_MXF_20110309 */
+#include "../../../../include/linux/zte_memlog.h" /* SDUPDATE_MXF_20110309 */
 
 //add by stone 2011_0112
 #define CONFIG_ZTE_ALARM

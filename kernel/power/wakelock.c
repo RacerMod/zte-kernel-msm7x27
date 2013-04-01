@@ -12,14 +12,15 @@
  * GNU General Public License for more details.
  *
  */
- /*
-  * 20110112 lhx     LHX_PM_20110112_02 disalbe sync_in_suspend temp for wakeup system
-  * 20100519 liuyijian     support auto test ZTE_WAKELOCK_LYJ_001 
-  * 2010-05-06  hyj         protect  active_wake_lock_buf against  memory overflow   ZTE_HYJ_PM_20100506
-  * 2010-04-19  hyj        modify suspend_exception_timer expire time from 15Hz to 5*60Hz ZTE_HYJ_PM_20100419_01
-  * 2010-04-06  zhengchao  add some logs for wakelock blocking suspend ZTE_ZHENGCHAO_PM_20100406_01
-*  2010-01-18   hyj        debug wakelock info when suspend fail  ZTE_HYJ_WAKELOCK_TOOL
-*/ 
+/*
+ * 2011-01-12  lhx        disable sync_in_suspend temp for wakeup system                 LHX_PM_20110112_02
+ * 2010-05-19  liuyijian  support auto test                                              ZTE_WAKELOCK_LYJ_001
+ * 2010-05-06  hyj        protect  active_wake_lock_buf against  memory overflow         ZTE_HYJ_PM_20100506
+ * 2010-04-19  hyj        modify suspend_exception_timer expire time from 15Hz to 5*60Hz ZTE_HYJ_PM_20100419_01
+ * 2010-04-06  zhengchao  add some logs for wakelock blocking suspend                    ZTE_ZHENGCHAO_PM_20100406_01
+ * 2010-01-18  hyj        debug wakelock info when suspend fail                          ZTE_HYJ_WAKELOCK_TOOL
+ */
+
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
@@ -30,8 +31,8 @@
 #include <linux/proc_fs.h>
 #endif
 #include "power.h"
-//20100519 ZTE_WAKELOCK_LYJ_001 
-#include <linux/moduleparam.h>
+#include <linux/moduleparam.h> //20100519 ZTE_WAKELOCK_LYJ_001
+#include <linux/delay.h>
 
 enum {
 	DEBUG_EXIT_SUSPEND = 1U << 0,
@@ -40,7 +41,6 @@ enum {
 	DEBUG_EXPIRE = 1U << 3,
 	DEBUG_WAKE_LOCK = 1U << 4,
 };
-//static int debug_mask = DEBUG_EXIT_SUSPEND | DEBUG_WAKEUP;
 static int debug_mask = DEBUG_EXIT_SUSPEND | DEBUG_WAKEUP | DEBUG_SUSPEND;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
@@ -72,13 +72,8 @@ struct suspend_sync_work
 
 static struct suspend_sync_work sync_in_suspend;
 
-
-#include <linux/delay.h>
-
-
 void enqueue_sync_work(signed long timeout)
 {
-	
 	long ret = 0;
 	DEFINE_WAIT(__wait);
 
@@ -102,6 +97,7 @@ void enqueue_sync_work(signed long timeout)
 	finish_wait(&sync_in_suspend.wait_wq, &__wait);
 	return ;
 }
+
 void abort_sync_wait(void)
 {
 	if (NULL == sync_in_suspend.workqueue) {
@@ -113,12 +109,14 @@ void abort_sync_wait(void)
 	wake_up_all(&sync_in_suspend.wait_wq);
 	return ;
 }
+
 int resume_work_pending(void);
+
 static void do_sync_work(struct work_struct *work)
 {
 	struct suspend_sync_work *p =
 		container_of(work, struct suspend_sync_work, sync_work);
-	
+
 	p->inprocess = 1;
 	wake_lock(&p->sync_wake_lock);
 	if (resume_work_pending()) {
@@ -131,8 +129,8 @@ static void do_sync_work(struct work_struct *work)
 	wake_unlock(&p->sync_wake_lock);
 	wake_up_all(&p->wait_wq);
 	p->inprocess = 0;
-	
 }
+
 static void create_suspend_sync_work(void)
 {
 	sync_in_suspend.workqueue = create_singlethread_workqueue("suspend_sync");
@@ -147,6 +145,7 @@ static void create_suspend_sync_work(void)
 		       __FUNCTION__, __LINE__);
 	}
 }
+
 void destroy_suspend_sync_work(void)
 {
 	if (sync_in_suspend.workqueue) {
@@ -159,26 +158,25 @@ void destroy_suspend_sync_work(void)
 	return ;
 }
 
-
 static ssize_t suspend_sync_show(struct device *devp, struct device_attribute *attr, char *buf)
 {
-        int i = 0;
-        i = scnprintf(buf, PAGE_SIZE, "%s\n", sync_in_suspend.enable? "enable":"disable");
+	int i = 0;
+	i = scnprintf(buf, PAGE_SIZE, "%s\n", sync_in_suspend.enable? "enable":"disable");
 
-        return i;
+	return i;
 }
+
 static ssize_t suspend_sync_store(struct device *dev,
                                    struct device_attribute *attr,
                                    const char *buf, size_t size)
 {
-        int value;
-        sscanf(buf, "%d", &value);
+	int value;
+	sscanf(buf, "%d", &value);
 	sync_in_suspend.enable = !!value;
-        return size;
+	return size;
 }
 
 static DEVICE_ATTR(suspend_sync, S_IRUGO, suspend_sync_show, suspend_sync_store);
-
 
 #ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
 /*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 begin*/
@@ -202,13 +200,15 @@ static ssize_t active_wake_lock_show(struct device *devp, struct device_attribut
 		}
 		used_size += ret;
 	}
-	
+
 	return used_size;
 }
 /*ZTE_HYJ_PM_20100506 end*/
+
 static DEVICE_ATTR(active_wakelock, S_IRUGO, active_wake_lock_show, NULL);
 /*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 end*/
 #endif
+
 #ifdef CONFIG_WAKELOCK_STAT
 static struct wake_lock deleted_wake_locks;
 static ktime_t last_sleep_time_update;
@@ -423,7 +423,8 @@ long has_wake_lock(int type)
 /*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 begin*/
 static void suspend_exception_handle(unsigned long data);
 static DEFINE_TIMER(suspend_exception_timer, suspend_exception_handle, 0, 0);
-static void dump_wake_locks(void);//ZTE_ZHENGCHAO_PM_20100406_01
+static void dump_wake_locks(void); //ZTE_ZHENGCHAO_PM_20100406_01
+
 /*ZTE_HYJ_PM_20100506 begin*/
 static void suspend_exception_handle(unsigned long data)
 {
@@ -479,7 +480,8 @@ handle_out:
 /*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 end*/
 /*ZTE_HYJ_PM_20100506 end*/
 #endif
-//20100519 ZTE_WAKELOCK_LYJ_001 
+
+//20100519 ZTE_WAKELOCK_LYJ_001
 static int unknown_wakeup_timeout = 500;
 module_param_named(unknown_wakeup_timeout, unknown_wakeup_timeout, int, S_IRUGO | S_IWUSR | S_IWGRP)
 static void suspend(struct work_struct *work)
@@ -487,25 +489,25 @@ static void suspend(struct work_struct *work)
 	int ret;
 	int entry_event_num;
 
-     //ruanmeisi
-	//	sys_sync();
+	//ruanmeisi
 	enqueue_sync_work(2 * HZ);
 	//end
-	
+
 	if (has_wake_lock(WAKE_LOCK_SUSPEND)) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("suspend: abort suspend\n");
 		return;
 	}
-#ifdef	CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
-	/*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 begin*/
+
+#ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
+/*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 begin*/
 	if(timer_pending(&suspend_exception_timer))
 		del_timer(&suspend_exception_timer);
 /*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 end*/	
 #endif
+
 	entry_event_num = current_event_num;
-    //	sys_sync();
-	
+	//sys_sync();
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("suspend: enter suspend\n");
 	ret = pm_suspend(requested_suspend_state);
@@ -522,12 +524,7 @@ static void suspend(struct work_struct *work)
 	if (current_event_num == entry_event_num) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("suspend: pm_suspend returned with no event\n");
-//20100519 ZTE_WAKELOCK_LYJ_001 
-#if 0
-        wake_lock_timeout(&unknown_wakeup, HZ / 2);
-#else
-        wake_lock_timeout(&unknown_wakeup, msecs_to_jiffies(unknown_wakeup_timeout));
-#endif
+		wake_lock_timeout(&unknown_wakeup, msecs_to_jiffies(unknown_wakeup_timeout)); //20100519 ZTE_WAKELOCK_LYJ_001
 	}
 }
 static DECLARE_WORK(suspend_work, suspend);
@@ -553,13 +550,14 @@ static DEFINE_TIMER(expire_timer, expire_wake_locks, 0, 0);
 static void dump_wake_locks(void)
 {
 	unsigned long irqflags;
-	
+
 	pr_info("[POWER]******expire_wake_locks: start********\n");
 	spin_lock_irqsave(&list_lock, irqflags);	
 	print_active_locks(WAKE_LOCK_SUSPEND);	
 	spin_unlock_irqrestore(&list_lock, irqflags);
 	pr_info("[POWER]********************\n");
 }
+
 static int power_suspend_late(struct device *dev)
 {
 	int ret = has_wake_lock(WAKE_LOCK_SUSPEND) ? -EAGAIN : 0;
@@ -689,15 +687,15 @@ static void wake_lock_internal(
 		list_add(&lock->link, &active_wake_locks[type]);
 	}
 	if (type == WAKE_LOCK_SUSPEND) {
-#ifdef	CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR			
-	/*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 begin*/	
+#ifdef	CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
+	/*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 begin*/
 		if (lock == &main_wake_lock) {
 			current_event_num++;
 			if(timer_pending(&suspend_exception_timer))
 				del_timer(&suspend_exception_timer);
 		}
-	/*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 end*/		
-#endif		
+	/*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 end*/
+#endif
 #ifdef CONFIG_WAKELOCK_STAT
 		if (lock == &main_wake_lock)
 			update_sleep_wait_stats_locked(1);
@@ -751,7 +749,7 @@ void wake_unlock(struct wake_lock *lock)
 	lock->flags &= ~(WAKE_LOCK_ACTIVE | WAKE_LOCK_AUTO_EXPIRE);
 	list_del(&lock->link);
 	list_add(&lock->link, &inactive_locks);
-#ifdef	CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR	
+#ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR	
 /*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 begin*/
 	if (lock == &main_wake_lock) 
 		mod_timer(&suspend_exception_timer,jiffies + 5*60*HZ); /*ZTE_HYJ_PM_20100419_01 15Hz -> 5*60HZ*/
@@ -838,13 +836,13 @@ static int __init wakelocks_init(void)
 	if (ret) {
 		pr_err("wakelocks_init: suspend_sync device_create_file failed\n");
 	}
-
 	//end
 
 	if (suspend_work_queue == NULL) {
 		ret = -ENOMEM;
 		goto err_suspend_work_queue;
 	}
+
 #ifdef CONFIG_ZTE_SUSPEND_WAKEUP_MONITOR
 	/*ZTE_HYJ_WAKELOCK_TOOL 2010.0114 begin*/
 	ret = device_create_file(&power_device.dev,&dev_attr_active_wakelock);
@@ -880,7 +878,7 @@ static void  __exit wakelocks_exit(void)
 	device_remove_file(&power_device.dev, &dev_attr_suspend_sync);
 	destroy_suspend_sync_work();
 	//end
-	 
+
 #ifdef CONFIG_WAKELOCK_STAT
 	remove_proc_entry("wakelocks", NULL);
 #endif

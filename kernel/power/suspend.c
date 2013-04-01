@@ -190,7 +190,7 @@ static int suspend_enter(suspend_state_t state)
 
 	return error;
 }
-extern void record_sleep_awake_time(bool record_sleep_awake);	//LHX_PM_20110324_01 add code to record how long the APP sleeps or keeps awake 
+extern void record_sleep_awake_time(bool record_sleep_awake); //LHX_PM_20110324_01 add code to record how long the APP sleeps or keeps awake 
 
 /**
  *	suspend_devices_and_enter - suspend devices and enter the desired system
@@ -201,6 +201,7 @@ int suspend_devices_and_enter(suspend_state_t state)
 {
 	int error;
 	gfp_t saved_mask;
+
 	if (!suspend_ops)
 		return -ENOSYS;
 
@@ -226,8 +227,8 @@ int suspend_devices_and_enter(suspend_state_t state)
  Resume_devices:
 	suspend_test_start();
 	dpm_resume_end(PMSG_RESUME);
-	pr_info("Resume DONE in %s line %d\n",__func__,__LINE__);	//LHX_PM_20110113 add log to indicate resume finish
-	record_sleep_awake_time(false);		//LHX_PM_20110324_01 add code to record how long the APP sleeps or keeps awake 
+	pr_info("Resume DONE in %s line %d\n",__func__,__LINE__); //LHX_PM_20110113 add log to indicate resume finish
+	record_sleep_awake_time(false); //LHX_PM_20110324_01 add code to record how long the APP sleeps or keeps awake 
 	suspend_test_finish("resume devices");
 	set_gfp_allowed_mask(saved_mask);
 	resume_console();

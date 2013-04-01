@@ -1959,15 +1959,15 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 	return alloc_flags;
 }
 
-void dump_mem(void)//tcd
+void dump_mem(void) //tcd
 {
-        char modprobe_path[KMOD_PATH_LEN] = "/system/bin/dumpmem.sh";
-        char *argv[] = { modprobe_path,NULL };
-        static char *envp[] = { "HOME=/",
-                           "TERM=linux",
-                           "PATH=/sbin:/usr/sbin:/bin:/usr/bin:/system/bin",
-                           NULL };
-        call_usermodehelper(modprobe_path, argv, envp, 1);
+	char modprobe_path[KMOD_PATH_LEN] = "/system/bin/dumpmem.sh";
+	char *argv[] = { modprobe_path,NULL };
+	static char *envp[] = { "HOME=/",
+							"TERM=linux",
+							"PATH=/sbin:/usr/sbin:/bin:/usr/bin:/system/bin",
+							NULL };
+	call_usermodehelper(modprobe_path, argv, envp, 1);
 }
 
 static inline struct page *
@@ -2105,7 +2105,7 @@ nopage:
 			" order:%d, mode:0x%x\n",
 			p->comm, order, gfp_mask);
 		dump_stack();
-		dump_mem();//tcd
+		dump_mem(); //tcd
 		show_mem();
 	}
 	return page;

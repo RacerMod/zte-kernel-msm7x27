@@ -126,7 +126,8 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 #ifdef DIAG_DEBUG
 					printk(KERN_INFO "\n ENQUEUE buf ptr"
 						   " and length is %x , %d\n",
-						   (unsigned int)(driver->buf_tbl[i].buf), driver->buf_tbl[i].length);
+						   (unsigned int)(driver->buf_
+				tbl[i].buf), driver->buf_tbl[i].length);
 #endif
 					break;
 				}

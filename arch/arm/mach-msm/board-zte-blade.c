@@ -84,7 +84,7 @@ when         who        what, where, why                             comment tag
 #include <linux/android_pmem.h>
 #include <mach/camera.h>
 #include <linux/proc_fs.h>
-#include <mach/zte_memlog.h>
+#include "../../../../include/linux/zte_memlog.h"
 #include "devices.h"
 #include "socinfo.h"
 #include "clock.h"
