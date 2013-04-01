@@ -1,8 +1,5 @@
 #Android makefile to build kernel as a part of Android Build
-#zenghuipeng	add oprofile.ko driver.  ZHP_OPROFILE_20101109
-echo_% :
-	@echo $* = '${$*}'
-	
+
 ifeq ($(TARGET_PREBUILT_KERNEL),)
 
 KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
@@ -17,6 +14,10 @@ else
 TARGET_PREBUILT_KERNEL := $(TARGET_PREBUILT_INT_KERNEL)
 endif
 
+file := $(TARGET_OUT)/lib/modules/oprofile.ko
+ALL_PREBUILT += $(file)
+$(file) : $(TARGET_PREBUILT_KERNEL) | $(ACP)
+	$(transform-prebuild-to-target)
 
 $(KERNEL_OUT):
 	mkdir -p $(KERNEL_OUT)
@@ -30,15 +31,6 @@ $(KERNEL_OUT)/piggy : $(TARGET_PREBUILT_INT_KERNEL)
 $(TARGET_PREBUILT_INT_KERNEL): $(KERNEL_OUT) $(KERNEL_CONFIG) $(KERNEL_HEADERS_INSTALL)
 	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi-
 	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi- modules
-
-	#ZTE_WIFI_ZBS_20110126
-	mkdir -p ./$(KERNEL_OUT)/../../system/lib
-	cp -f ./$(KERNEL_OUT)/arch/arm/oprofile/oprofile.ko ./$(KERNEL_OUT)/../../system/lib
-ifeq ($(BOARD_USES_BCM_WIFI),true)
-ifneq ($(BOARD_USES_BCM4330_WIFI),true)
-	cp -f ./$(KERNEL_OUT)/drivers/net/wireless/bcm4319/dhd.ko ./$(KERNEL_OUT)/../../system/lib
-endif	
-endif
 
 $(KERNEL_HEADERS_INSTALL): $(KERNEL_OUT) $(KERNEL_CONFIG)
 	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi- headers_install
