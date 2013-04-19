@@ -184,12 +184,9 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 		       __func__, down, x, y, z1, z2, tssc_status);
 	if (down)
 	{
-		//if (0 == z1) return IRQ_HANDLED;
-		//z = ((2 * z2 - 2 * z1 - 3) * x) / (2 * z1 + 3);
 		z = ((z2 - z1 - 2) * x) / (z1 + 2);
 		z = (2500 - z) * 1000 / (2500 - 900);
 		//printk("msm_ts_irq,z=%d,z1=%d,z2=%d,x=%d\n",z,z1,z2,x);
-		if (z <= 0) z = 255;
 	}
 	//ZTE_TS_WLY_20100729,end
 
@@ -238,10 +235,12 @@ static irqreturn_t msm_ts_irq(int irq, void *dev_id)
 #endif
 
 	if (down) {
-		//printk("huangjinyu x= %d ,y= %d \n",x,y);
-		input_report_abs(ts->input_dev, ABS_X, x);
-		input_report_abs(ts->input_dev, ABS_Y, y);
-		input_report_abs(ts->input_dev, ABS_PRESSURE, z);
+		if (z > 5) {  // ignore noisy low pressure touches
+			//printk("huangjinyu x= %d ,y= %d \n",x,y);
+			input_report_abs(ts->input_dev, ABS_X, x);
+			input_report_abs(ts->input_dev, ABS_Y, y);
+			input_report_abs(ts->input_dev, ABS_PRESSURE, z);
+		}
 	}
 	input_report_key(ts->input_dev, BTN_TOUCH, down);
 	input_sync(ts->input_dev);
